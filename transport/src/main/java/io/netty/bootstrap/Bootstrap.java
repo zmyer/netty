@@ -48,6 +48,13 @@ import java.util.Map.Entry;
  */
 public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
 
+    private static final SocketAddressFunction NULL_FUNCTION = new SocketAddressFunction() {
+        @Override
+        public SocketAddress apply(SocketAddress remote) {
+            return null;
+        }
+    };
+
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(Bootstrap.class);
 
     private static final AddressResolverGroup<?> DEFAULT_RESOLVER = DefaultAddressResolverGroup.INSTANCE;
@@ -146,7 +153,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
     }
 
     /**
-     * Connect a {@link Channel} to the remote peer.
+     * Connect a {@link Channel} to the remote peer, binding to the specified {@code localAddress}.
      */
     public ChannelFuture connect(SocketAddress remoteAddress, SocketAddress localAddress) {
         if (remoteAddress == null) {
@@ -157,9 +164,33 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
     }
 
     /**
+     * Connect a {@link Channel} to the remote peer. Once the {@code remoteAddress} is resolved it will use the
+     * {@link SocketAddressFunction} to retrieve the local {@link SocketAddress} to bind too.
+     */
+    public ChannelFuture connect(SocketAddress remoteAddress, SocketAddressFunction localAddressFunction) {
+        if (remoteAddress == null) {
+            throw new NullPointerException("remoteAddress");
+        }
+        validate();
+        return doResolveAndConnect(remoteAddress, localAddressFunction);
+    }
+
+    private ChannelFuture doResolveAndConnect(final SocketAddress remoteAddress, final SocketAddress localAddress) {
+        SocketAddressFunction localAddressFunction =
+                localAddress == null ? NULL_FUNCTION : new SocketAddressFunction() {
+            @Override
+            public SocketAddress apply(SocketAddress remote) {
+                return localAddress;
+            }
+        };
+        return doResolveAndConnect(remoteAddress, localAddressFunction);
+    }
+
+    /**
      * @see #connect()
      */
-    private ChannelFuture doResolveAndConnect(final SocketAddress remoteAddress, final SocketAddress localAddress) {
+    private ChannelFuture doResolveAndConnect(
+            final SocketAddress remoteAddress, final SocketAddressFunction localAddress) {
         final ChannelFuture regFuture = initAndRegister();
         final Channel channel = regFuture.channel();
 
@@ -194,14 +225,15 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
     }
 
     private ChannelFuture doResolveAndConnect0(final Channel channel, SocketAddress remoteAddress,
-                                               final SocketAddress localAddress, final ChannelPromise promise) {
+                                               final SocketAddressFunction localAddressFunction,
+                                               final ChannelPromise promise) {
         try {
             final EventLoop eventLoop = channel.eventLoop();
             final AddressResolver<SocketAddress> resolver = this.resolver.getResolver(eventLoop);
 
             if (!resolver.isSupported(remoteAddress) || resolver.isResolved(remoteAddress)) {
                 // Resolver has no idea about what to do with the specified remote address or it's resolved already.
-                doConnect(remoteAddress, localAddress, promise);
+                doConnect(remoteAddress, localAddressFunction, promise);
                 return promise;
             }
 
@@ -216,7 +248,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
                     promise.setFailure(resolveFailureCause);
                 } else {
                     // Succeeded to resolve immediately; cached? (or did a blocking lookup)
-                    doConnect(resolveFuture.getNow(), localAddress, promise);
+                    doConnect(resolveFuture.getNow(), localAddressFunction, promise);
                 }
                 return promise;
             }
@@ -229,7 +261,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
                         channel.close();
                         promise.setFailure(future.cause());
                     } else {
-                        doConnect(future.getNow(), localAddress, promise);
+                        doConnect(future.getNow(), localAddressFunction, promise);
                     }
                 }
             });
@@ -240,7 +272,8 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
     }
 
     private static void doConnect(
-            final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise connectPromise) {
+            final SocketAddress remoteAddress, final SocketAddressFunction localAddressFunction,
+            final ChannelPromise connectPromise) {
 
         // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
         // the pipeline in its channelRegistered() implementation.
@@ -248,10 +281,19 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
         channel.eventLoop().execute(new Runnable() {
             @Override
             public void run() {
-                if (localAddress == null) {
+                if (localAddressFunction == null) {
                     channel.connect(remoteAddress, connectPromise);
                 } else {
-                    channel.connect(remoteAddress, localAddress, connectPromise);
+                    try {
+                        final SocketAddress local = localAddressFunction.apply(remoteAddress);
+                        if (local == null) {
+                            channel.connect(remoteAddress, connectPromise);
+                        } else {
+                            channel.connect(remoteAddress, local, connectPromise);
+                        }
+                    } catch (Throwable cause) {
+                        connectPromise.setFailure(cause);
+                    }
                 }
                 connectPromise.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
             }
