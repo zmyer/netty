@@ -26,15 +26,34 @@ import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.oio.OioDatagramChannel;
 import io.netty.util.NetUtil;
 import io.netty.util.internal.SocketUtils;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
 
 public class DatagramMulticastTest extends AbstractDatagramTest {
+
+    @BeforeClass
+    public static void assumeIPv4LoopbackInterface() {
+        // As our test assumes IPv4 we need to ensure the loopback interface supports.
+        boolean loopbackInterfaceHasIpv4Address = false;
+        Enumeration<InetAddress> addresses =  NetUtil.LOOPBACK_IF.getInetAddresses();
+        while (addresses.hasMoreElements()) {
+            if (addresses.nextElement() instanceof Inet4Address) {
+                loopbackInterfaceHasIpv4Address = true;
+                break;
+            }
+        }
+        Assume.assumeTrue("Loopback interface must support IPv4", loopbackInterfaceHasIpv4Address);
+    }
 
     @Test
     public void testMulticast() throws Throwable {

@@ -142,7 +142,17 @@ class EpollSocketTestPermutation extends SocketTestPermutation {
                 new BootstrapFactory<Bootstrap>() {
                     @Override
                     public Bootstrap newInstance() {
-                        return new Bootstrap().group(EPOLL_WORKER_GROUP).channel(EpollDatagramChannel.class);
+                        return new Bootstrap().group(EPOLL_WORKER_GROUP).channelFactory(new ChannelFactory<Channel>() {
+                            @Override
+                            public Channel newChannel() {
+                                return new EpollDatagramChannel(InternetProtocolFamily.IPv4);
+                            }
+
+                            @Override
+                            public String toString() {
+                                return InternetProtocolFamily.class.getSimpleName() + ".class";
+                            }
+                        });
                     }
                 }
         );
