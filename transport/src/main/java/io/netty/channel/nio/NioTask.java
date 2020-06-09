@@ -24,6 +24,7 @@ import java.nio.channels.Selector;
  *
  * @see NioEventLoop#register(SelectableChannel, int, NioTask)
  */
+//FGTODO: 2019/11/1 下午1:17 zmyer
 public interface NioTask<C extends SelectableChannel> {
     /**
      * Invoked when the {@link SelectableChannel} has been selected by the {@link Selector}.

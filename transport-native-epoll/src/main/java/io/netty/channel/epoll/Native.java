@@ -44,6 +44,7 @@ import static io.netty.channel.unix.Errors.newIOException;
  * <p><strong>Internal usage only!</strong>
  * <p>Static members which call JNI methods must be defined in {@link NativeStaticallyReferencedJniMethods}.
  */
+//FGTODO: 2019/11/1 下午1:35 zmyer
 public final class Native {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(Native.class);
 
@@ -80,10 +81,15 @@ public final class Native {
     }
 
     private static native int eventFd();
+
     private static native int timerFd();
+
     public static native void eventFdWrite(int fd, long value);
+
     public static native void eventFdRead(int fd);
+
     static native void timerFdRead(int fd);
+
     static native void timerFdSetTime(int fd, int sec, int nsec) throws IOException;
 
     public static FileDescriptor newEpollCreate() {
@@ -108,7 +114,7 @@ public final class Native {
             timeoutNs = 0;
         }
         int ready = epollWait0(epollFd.intValue(), events.memoryAddress(), events.length(), timerFd.intValue(),
-                               timeoutSec, timeoutNs);
+                timeoutSec, timeoutNs);
         if (ready < 0) {
             throw newIOException("epoll_wait", ready);
         }
@@ -144,7 +150,9 @@ public final class Native {
     }
 
     private static native int epollWait0(int efd, long address, int len, int timerFd, int timeoutSec, int timeoutNs);
+
     private static native int epollWait(int efd, long address, int len, int timeout);
+
     private static native int epollBusyWait0(int efd, long address, int len);
 
     public static void epollCtlAdd(int efd, final int fd, final int flags) throws IOException {
@@ -153,6 +161,7 @@ public final class Native {
             throw newIOException("epoll_ctl", res);
         }
     }
+
     private static native int epollCtlAdd0(int efd, int fd, int flags);
 
     public static void epollCtlMod(int efd, final int fd, final int flags) throws IOException {
@@ -161,6 +170,7 @@ public final class Native {
             throw newIOException("epoll_ctl", res);
         }
     }
+
     private static native int epollCtlMod0(int efd, int fd, int flags);
 
     public static void epollCtlDel(int efd, final int fd) throws IOException {
@@ -169,6 +179,7 @@ public final class Native {
             throw newIOException("epoll_ctl", res);
         }
     }
+
     private static native int epollCtlDel0(int efd, int fd);
 
     // File-descriptor operations
@@ -189,7 +200,7 @@ public final class Native {
     }
 
     static int sendmmsg(int fd, boolean ipv6, NativeDatagramPacketArray.NativeDatagramPacket[] msgs,
-                               int offset, int len) throws IOException {
+                        int offset, int len) throws IOException {
         int res = sendmmsg0(fd, ipv6, msgs, offset, len);
         if (res >= 0) {
             return res;
@@ -214,6 +225,7 @@ public final class Native {
 
     // epoll_event related
     public static native int sizeofEpollEvent();
+
     public static native int offsetofEpollData();
 
     private static void loadNativeLibrary() {

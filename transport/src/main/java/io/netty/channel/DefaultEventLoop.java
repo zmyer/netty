@@ -20,6 +20,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
+//FGTODO: 2019/11/1 下午1:53 zmyer
 public class DefaultEventLoop extends SingleThreadEventLoop {
 
     public DefaultEventLoop() {
@@ -48,7 +49,7 @@ public class DefaultEventLoop extends SingleThreadEventLoop {
 
     @Override
     protected void run() {
-        for (;;) {
+        for (; ; ) {
             Runnable task = takeTask();
             if (task != null) {
                 task.run();

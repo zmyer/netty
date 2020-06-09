@@ -30,12 +30,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Note that this class is for internal use only and is subject to change at any time.  Use {@link FastThreadLocal}
  * unless you know what you are doing.
  */
+//FGTODO: 2019/10/31 下午7:18 zmyer
 class UnpaddedInternalThreadLocalMap {
 
-    static final ThreadLocal<InternalThreadLocalMap> slowThreadLocalMap = new ThreadLocal<InternalThreadLocalMap>();
+    static final ThreadLocal<InternalThreadLocalMap> slowThreadLocalMap = new ThreadLocal<>();
     static final AtomicInteger nextIndex = new AtomicInteger();
 
-    /** Used by {@link FastThreadLocal} */
+    /**
+     * Used by {@link FastThreadLocal}
+     */
     Object[] indexedVariables;
 
     // Core thread-locals

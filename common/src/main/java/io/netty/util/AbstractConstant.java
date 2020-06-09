@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Base implementation of {@link Constant}.
  */
+//FGTODO: 2019/11/1 下午1:55 zmyer
 public abstract class AbstractConstant<T extends AbstractConstant<T>> implements Constant<T> {
 
     private static final AtomicLong uniqueIdGenerator = new AtomicLong();

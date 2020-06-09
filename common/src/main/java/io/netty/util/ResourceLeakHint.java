@@ -19,6 +19,7 @@ package io.netty.util;
 /**
  * A hint object that provides human-readable message for easier resource leak tracking.
  */
+//FGTODO: 2019/10/31 下午7:08 zmyer
 public interface ResourceLeakHint {
     /**
      * Returns a human-readable message that potentially enables easier resource leak tracking.

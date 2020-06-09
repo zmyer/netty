@@ -23,38 +23,39 @@ import java.net.SocketAddress;
  * Skeleton implementation of a {@link ChannelOutboundHandler}. This implementation just forwards each method call via
  * the {@link ChannelHandlerContext}.
  */
+//FGTODO: 2019/11/1 下午1:40 zmyer
 public class ChannelOutboundHandlerAdapter extends ChannelHandlerAdapter implements ChannelOutboundHandler {
 
     /**
      * Calls {@link ChannelHandlerContext#bind(SocketAddress, ChannelPromise)} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip
     @Override
     public void bind(ChannelHandlerContext ctx, SocketAddress localAddress,
-            ChannelPromise promise) throws Exception {
+                     ChannelPromise promise) throws Exception {
         ctx.bind(localAddress, promise);
     }
 
     /**
      * Calls {@link ChannelHandlerContext#connect(SocketAddress, SocketAddress, ChannelPromise)} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip
     @Override
     public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress,
-            SocketAddress localAddress, ChannelPromise promise) throws Exception {
+                        SocketAddress localAddress, ChannelPromise promise) throws Exception {
         ctx.connect(remoteAddress, localAddress, promise);
     }
 
     /**
      * Calls {@link ChannelHandlerContext#disconnect(ChannelPromise)} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip
@@ -67,7 +68,7 @@ public class ChannelOutboundHandlerAdapter extends ChannelHandlerAdapter impleme
     /**
      * Calls {@link ChannelHandlerContext#close(ChannelPromise)} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip
@@ -80,7 +81,7 @@ public class ChannelOutboundHandlerAdapter extends ChannelHandlerAdapter impleme
     /**
      * Calls {@link ChannelHandlerContext#deregister(ChannelPromise)} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip
@@ -92,7 +93,7 @@ public class ChannelOutboundHandlerAdapter extends ChannelHandlerAdapter impleme
     /**
      * Calls {@link ChannelHandlerContext#read()} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip
@@ -104,7 +105,7 @@ public class ChannelOutboundHandlerAdapter extends ChannelHandlerAdapter impleme
     /**
      * Calls {@link ChannelHandlerContext#write(Object, ChannelPromise)} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip
@@ -116,7 +117,7 @@ public class ChannelOutboundHandlerAdapter extends ChannelHandlerAdapter impleme
     /**
      * Calls {@link ChannelHandlerContext#flush()} to forward
      * to the next {@link ChannelOutboundHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      */
     @Skip

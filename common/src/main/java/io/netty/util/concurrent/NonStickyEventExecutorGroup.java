@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>The {@link EventExecutorGroup#next()} for the wrapped {@link EventExecutorGroup} must <strong>NOT</strong> return
  * executors of type {@link OrderedEventExecutor}.
  */
+//FGTODO: 2019/11/1 下午1:48 zmyer
 @UnstableApi
 public final class NonStickyEventExecutorGroup implements EventExecutorGroup {
     private final EventExecutorGroup group;
@@ -234,7 +235,7 @@ public final class NonStickyEventExecutorGroup implements EventExecutorGroup {
             if (!state.compareAndSet(SUBMITTED, RUNNING)) {
                 return;
             }
-            for (;;) {
+            for (; ; ) {
                 int i = 0;
                 try {
                     for (; i < maxTaskExecutePerRun; i++) {

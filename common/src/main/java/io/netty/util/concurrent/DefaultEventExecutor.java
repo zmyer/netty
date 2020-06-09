@@ -22,6 +22,7 @@ import java.util.concurrent.ThreadFactory;
  * Default {@link SingleThreadEventExecutor} implementation which just execute all submitted task in a
  * serial fashion.
  */
+//FGTODO: 2019/11/4 下午8:23 zmyer
 public final class DefaultEventExecutor extends SingleThreadEventExecutor {
 
     public DefaultEventExecutor() {
@@ -60,7 +61,7 @@ public final class DefaultEventExecutor extends SingleThreadEventExecutor {
 
     @Override
     protected void run() {
-        for (;;) {
+        for (; ; ) {
             Runnable task = takeTask();
             if (task != null) {
                 task.run();

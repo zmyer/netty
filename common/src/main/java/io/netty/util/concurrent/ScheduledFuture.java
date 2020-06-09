@@ -18,6 +18,7 @@ package io.netty.util.concurrent;
 /**
  * The result of an scheduled asynchronous operation.
  */
+//FGTODO: 2019/11/4 下午8:26 zmyer
 @SuppressWarnings("ClassNameSameAsAncestorName")
 public interface ScheduledFuture<V> extends Future<V>, java.util.concurrent.ScheduledFuture<V> {
 }

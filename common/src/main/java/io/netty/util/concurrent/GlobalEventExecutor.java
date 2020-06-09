@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * task pending in the task queue for 1 second.  Please note it is not scalable to schedule large number of tasks to
  * this executor; use a dedicated executor.
  */
+//FGTODO: 2019/11/1 下午1:38 zmyer
 public final class GlobalEventExecutor extends AbstractScheduledEventExecutor implements OrderedEventExecutor {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(GlobalEventExecutor.class);
@@ -76,7 +77,7 @@ public final class GlobalEventExecutor extends AbstractScheduledEventExecutor im
      */
     Runnable takeTask() {
         BlockingQueue<Runnable> taskQueue = this.taskQueue;
-        for (;;) {
+        for (; ; ) {
             ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
             if (scheduledTask == null) {
                 Runnable task = null;
@@ -243,7 +244,7 @@ public final class GlobalEventExecutor extends AbstractScheduledEventExecutor im
     final class TaskRunner implements Runnable {
         @Override
         public void run() {
-            for (;;) {
+            for (; ; ) {
                 Runnable task = takeTask();
                 if (task != null) {
                     try {

@@ -21,9 +21,11 @@ import io.netty.util.concurrent.AbstractEventExecutor;
 /**
  * Skeletal implementation of {@link EventLoop}.
  */
+//FGTODO: 2019/11/1 下午1:52 zmyer
 public abstract class AbstractEventLoop extends AbstractEventExecutor implements EventLoop {
 
-    protected AbstractEventLoop() { }
+    protected AbstractEventLoop() {
+    }
 
     protected AbstractEventLoop(EventLoopGroup parent) {
         super(parent);

@@ -42,6 +42,7 @@ import static java.lang.Math.min;
 /**
  * {@link EventLoop} which uses kqueue under the covers. Only works on BSD!
  */
+//FGTODO: 2019/11/1 下午2:10 zmyer
 final class KQueueEventLoop extends SingleThreadEventLoop {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(KQueueEventLoop.class);
     private static final AtomicIntegerFieldUpdater<KQueueEventLoop> WAKEN_UP_UPDATER =
@@ -224,7 +225,7 @@ final class KQueueEventLoop extends SingleThreadEventLoop {
 
     @Override
     protected void run() {
-        for (;;) {
+        for (; ; ) {
             try {
                 int strategy = selectStrategy.calculateStrategy(selectNowSupplier, hasTasks());
                 switch (strategy) {
@@ -374,7 +375,7 @@ final class KQueueEventLoop extends SingleThreadEventLoop {
         // In the `close()` method, the channel is deleted from `channels` map.
         AbstractKQueueChannel[] localChannels = channels.values().toArray(new AbstractKQueueChannel[0]);
 
-        for (AbstractKQueueChannel ch: localChannels) {
+        for (AbstractKQueueChannel ch : localChannels) {
             ch.unsafe().close(ch.unsafe().voidPromise());
         }
     }

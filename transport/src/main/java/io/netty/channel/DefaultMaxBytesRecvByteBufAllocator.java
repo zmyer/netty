@@ -28,6 +28,7 @@ import java.util.Map.Entry;
  * The {@link RecvByteBufAllocator} that yields a buffer size prediction based upon decrementing the value from
  * the max bytes per read.
  */
+//FGTODO: 2019/11/1 下午2:34 zmyer
 public class DefaultMaxBytesRecvByteBufAllocator implements MaxBytesRecvByteBufAllocator {
     private volatile int maxBytesPerRead;
     private volatile int maxBytesPerIndividualRead;
@@ -182,7 +183,7 @@ public class DefaultMaxBytesRecvByteBufAllocator implements MaxBytesRecvByteBufA
 
     @Override
     public DefaultMaxBytesRecvByteBufAllocator maxBytesPerReadPair(int maxBytesPerRead,
-            int maxBytesPerIndividualRead) {
+                                                                   int maxBytesPerIndividualRead) {
         checkMaxBytesPerReadPair(maxBytesPerRead, maxBytesPerIndividualRead);
         // There is a dependency between this.maxBytesPerRead and this.maxBytesPerIndividualRead (a < b).
         // Write operations must be synchronized, but independent read operations can just be volatile.

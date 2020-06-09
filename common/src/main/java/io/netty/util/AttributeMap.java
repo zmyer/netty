@@ -17,9 +17,10 @@ package io.netty.util;
 
 /**
  * Holds {@link Attribute}s which can be accessed via {@link AttributeKey}.
- *
+ * <p>
  * Implementations must be Thread-safe.
  */
+//FGTODO: 2019/10/31 下午6:57 zmyer
 public interface AttributeMap {
     /**
      * Get the {@link Attribute} for the given {@link AttributeKey}. This method will never return null, but may return

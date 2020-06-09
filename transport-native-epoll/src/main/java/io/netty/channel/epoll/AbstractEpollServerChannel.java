@@ -27,6 +27,7 @@ import io.netty.channel.ServerChannel;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
+//FGTODO: 2019/11/1 下午1:56 zmyer
 public abstract class AbstractEpollServerChannel extends AbstractEpollChannel implements ServerChannel {
     private static final ChannelMetadata METADATA = new ChannelMetadata(false, 16);
 
@@ -118,7 +119,7 @@ public abstract class AbstractEpollServerChannel extends AbstractEpollChannel im
 
                         readPending = false;
                         pipeline.fireChannelRead(newChildChannel(allocHandle.lastBytesRead(), acceptedAddress, 1,
-                                                                 acceptedAddress[0]));
+                                acceptedAddress[0]));
                     } while (allocHandle.continueReading());
                 } catch (Throwable t) {
                     exception = t;

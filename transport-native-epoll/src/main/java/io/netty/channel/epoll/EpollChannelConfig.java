@@ -28,6 +28,7 @@ import java.util.Map;
 
 import static io.netty.channel.unix.Limits.SSIZE_MAX;
 
+//FGTODO: 2019/11/1 下午2:35 zmyer
 public class EpollChannelConfig extends DefaultChannelConfig {
     private volatile long maxBytesPerGatheringWrite = SSIZE_MAX;
 

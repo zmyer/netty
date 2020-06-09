@@ -28,8 +28,9 @@ import java.net.NetworkInterface;
  * of {@link ChannelConfig} and may depend on the nature of the transport it belongs
  * to.
  *
- * @param <T>   the type of the value which is valid for the {@link ChannelOption}
+ * @param <T> the type of the value which is valid for the {@link ChannelOption}
  */
+//FGTODO: 2019/11/1 下午1:55 zmyer
 public class ChannelOption<T> extends AbstractConstant<ChannelOption<T>> {
 
     private static final ConstantPool<ChannelOption<Object>> pool = new ConstantPool<ChannelOption<Object>>() {

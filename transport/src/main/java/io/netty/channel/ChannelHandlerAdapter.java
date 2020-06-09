@@ -24,6 +24,7 @@ import java.util.Map;
 /**
  * Skeleton implementation of a {@link ChannelHandler}.
  */
+//FGTODO: 2019/10/31 下午7:18 zmyer
 public abstract class ChannelHandlerAdapter implements ChannelHandler {
 
     // Not using volatile because it's used only for a sanity check.
@@ -80,7 +81,7 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
     /**
      * Calls {@link ChannelHandlerContext#fireExceptionCaught(Throwable)} to forward
      * to the next {@link ChannelHandler} in the {@link ChannelPipeline}.
-     *
+     * <p>
      * Sub-classes may override this method to change behavior.
      *
      * @deprecated is part of {@link ChannelInboundHandler}

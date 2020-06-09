@@ -25,6 +25,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @param <V>
  */
+//FGTODO: 2019/10/31 下午7:27 zmyer
 public abstract class AbstractFuture<V> implements Future<V> {
 
     @Override

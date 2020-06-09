@@ -29,6 +29,7 @@ import java.util.Map;
 /**
  * Exposes the configuration of an {@link AbstractBootstrap}.
  */
+//FGTODO: 2019/10/31 下午7:16 zmyer
 public abstract class AbstractBootstrapConfig<B extends AbstractBootstrap<B, C>, C extends Channel> {
 
     protected final B bootstrap;

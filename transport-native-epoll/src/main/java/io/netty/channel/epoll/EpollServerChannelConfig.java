@@ -32,6 +32,7 @@ import static io.netty.channel.ChannelOption.SO_RCVBUF;
 import static io.netty.channel.ChannelOption.SO_REUSEADDR;
 import static io.netty.util.internal.ObjectUtil.checkPositiveOrZero;
 
+//FGTODO: 2019/11/1 下午2:35 zmyer
 public class EpollServerChannelConfig extends EpollChannelConfig implements ServerSocketChannelConfig {
     private volatile int backlog = NetUtil.SOMAXCONN;
     private volatile int pendingFastOpenRequestsThreshold;
@@ -146,8 +147,7 @@ public class EpollServerChannelConfig extends EpollChannelConfig implements Serv
      * effect. This has to be set before doing listen on the socket otherwise this takes no effect.
      *
      * @param pendingFastOpenRequestsThreshold number of requests to be pending for fastopen at a given point in time
-     * for security. @see <a href="https://tools.ietf.org/html/rfc7413#appendix-A.2">RFC 7413 Passive Open</a>
-     *
+     *                                         for security. @see <a href="https://tools.ietf.org/html/rfc7413#appendix-A.2">RFC 7413 Passive Open</a>
      * @see <a href="https://tools.ietf.org/html/rfc7413">RFC 7413 TCP FastOpen</a>
      */
     public EpollServerChannelConfig setTcpFastopen(int pendingFastOpenRequestsThreshold) {

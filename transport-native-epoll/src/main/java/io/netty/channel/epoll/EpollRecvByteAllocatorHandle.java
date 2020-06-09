@@ -22,9 +22,9 @@ import io.netty.channel.RecvByteBufAllocator.ExtendedHandle;
 import io.netty.channel.unix.PreferredDirectByteBufAllocator;
 import io.netty.util.UncheckedBooleanSupplier;
 
+//FGTODO: 2019/11/1 下午2:30 zmyer
 class EpollRecvByteAllocatorHandle extends DelegatingHandle implements ExtendedHandle {
-    private final PreferredDirectByteBufAllocator preferredDirectByteBufAllocator =
-            new PreferredDirectByteBufAllocator();
+    private final PreferredDirectByteBufAllocator preferredDirectByteBufAllocator = new PreferredDirectByteBufAllocator();
     private final UncheckedBooleanSupplier defaultMaybeMoreDataSupplier = new UncheckedBooleanSupplier() {
         @Override
         public boolean get() {
@@ -57,7 +57,7 @@ class EpollRecvByteAllocatorHandle extends DelegatingHandle implements ExtendedH
          * It is assumed RDHUP is handled externally by checking {@link #isReceivedRdHup()}.
          */
         return (isEdgeTriggered && lastBytesRead() > 0) ||
-               (!isEdgeTriggered && lastBytesRead() == attemptedBytesRead());
+                (!isEdgeTriggered && lastBytesRead() == attemptedBytesRead());
     }
 
     final void edgeTriggered(boolean edgeTriggered) {

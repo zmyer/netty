@@ -52,7 +52,7 @@ final class EmbeddedEventLoop extends AbstractScheduledEventExecutor implements 
     }
 
     void runTasks() {
-        for (;;) {
+        for (; ; ) {
             Runnable task = tasks.poll();
             if (task == null) {
                 break;
@@ -64,7 +64,7 @@ final class EmbeddedEventLoop extends AbstractScheduledEventExecutor implements 
 
     long runScheduledTasks() {
         long time = AbstractScheduledEventExecutor.nanoTime();
-        for (;;) {
+        for (; ; ) {
             Runnable task = pollScheduledTask(time);
             if (task == null) {
                 return nextScheduledTaskNano();

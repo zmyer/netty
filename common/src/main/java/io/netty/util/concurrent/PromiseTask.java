@@ -18,6 +18,7 @@ package io.netty.util.concurrent;
 import java.util.concurrent.Callable;
 import java.util.concurrent.RunnableFuture;
 
+//FGTODO: 2019/10/31 下午7:34 zmyer
 class PromiseTask<V> extends DefaultPromise<V> implements RunnableFuture<V> {
 
     private static final class RunnableAdapter<T> implements Callable<T> {

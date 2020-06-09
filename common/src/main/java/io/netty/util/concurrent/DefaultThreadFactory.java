@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A {@link ThreadFactory} implementation with a simple naming rule.
  */
+//FGTODO: 2019/10/31 下午7:31 zmyer
 public class DefaultThreadFactory implements ThreadFactory {
 
     private static final AtomicInteger poolId = new AtomicInteger();

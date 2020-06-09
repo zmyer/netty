@@ -31,7 +31,7 @@ import java.net.StandardSocketOptions;
  * A {@link ChannelConfig} for a {@link SocketChannel}.
  *
  * <h3>Available options</h3>
- *
+ * <p>
  * In addition to the options provided by {@link ChannelConfig},
  * {@link SocketChannelConfig} allows the following options in the option map:
  *
@@ -57,6 +57,7 @@ import java.net.StandardSocketOptions;
  * </tr>
  * </table>
  */
+//FGTODO: 2019/11/1 下午2:38 zmyer
 public interface SocketChannelConfig extends ChannelConfig {
 
     /**

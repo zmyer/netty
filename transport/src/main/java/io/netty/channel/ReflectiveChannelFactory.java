@@ -24,6 +24,7 @@ import java.lang.reflect.Constructor;
 /**
  * A {@link ChannelFactory} that instantiates a new {@link Channel} by invoking its default constructor reflectively.
  */
+//FGTODO: 2019/10/31 下午7:01 zmyer
 public class ReflectiveChannelFactory<T extends Channel> implements ChannelFactory<T> {
 
     private final Constructor<? extends T> constructor;

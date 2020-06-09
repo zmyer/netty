@@ -21,6 +21,7 @@ import java.util.concurrent.ThreadFactory;
 /**
  * {@link MultithreadEventLoopGroup} which must be used for the local transport.
  */
+//FGTODO: 2019/11/1 下午2:07 zmyer
 public class DefaultEventLoopGroup extends MultithreadEventLoopGroup {
 
     /**
@@ -33,7 +34,7 @@ public class DefaultEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance
      *
-     * @param nThreads          the number of threads to use
+     * @param nThreads the number of threads to use
      */
     public DefaultEventLoopGroup(int nThreads) {
         this(nThreads, (ThreadFactory) null);
@@ -42,8 +43,8 @@ public class DefaultEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance
      *
-     * @param nThreads          the number of threads to use
-     * @param threadFactory     the {@link ThreadFactory} or {@code null} to use the default
+     * @param nThreads      the number of threads to use
+     * @param threadFactory the {@link ThreadFactory} or {@code null} to use the default
      */
     public DefaultEventLoopGroup(int nThreads, ThreadFactory threadFactory) {
         super(nThreads, threadFactory);
@@ -52,8 +53,8 @@ public class DefaultEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance
      *
-     * @param nThreads          the number of threads to use
-     * @param executor          the Executor to use, or {@code null} if the default should be used.
+     * @param nThreads the number of threads to use
+     * @param executor the Executor to use, or {@code null} if the default should be used.
      */
     public DefaultEventLoopGroup(int nThreads, Executor executor) {
         super(nThreads, executor);

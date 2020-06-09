@@ -18,6 +18,7 @@ package io.netty.channel;
 /**
  * Factory that creates a new {@link SelectStrategy} every time.
  */
+//FGTODO: 2019/10/31 下午7:46 zmyer
 public interface SelectStrategyFactory {
 
     /**

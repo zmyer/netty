@@ -30,6 +30,7 @@ import java.util.concurrent.ThreadFactory;
  * Abstract base class for {@link EventLoopGroup} implementations that handles their tasks with multiple threads at
  * the same time.
  */
+//FGTODO: 2019/10/31 下午7:26 zmyer
 public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutorGroup implements EventLoopGroup {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(MultithreadEventLoopGroup.class);
@@ -64,7 +65,7 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
      * EventExecutorChooserFactory, Object...)
      */
     protected MultithreadEventLoopGroup(int nThreads, Executor executor, EventExecutorChooserFactory chooserFactory,
-                                     Object... args) {
+                                        Object... args) {
         super(nThreads == 0 ? DEFAULT_EVENT_LOOP_THREADS : nThreads, executor, chooserFactory, args);
     }
 

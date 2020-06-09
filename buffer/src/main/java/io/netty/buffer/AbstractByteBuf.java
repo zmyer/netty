@@ -43,6 +43,7 @@ import static io.netty.util.internal.ObjectUtil.checkPositiveOrZero;
 /**
  * A skeletal implementation of a buffer.
  */
+//FGTODO: 2019/11/1 下午2:32 zmyer
 public abstract class AbstractByteBuf extends ByteBuf {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractByteBuf.class);
     private static final String LEGACY_PROP_CHECK_ACCESSIBLE = "io.netty.buffer.bytebuf.checkAccessible";
@@ -544,7 +545,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
 
     @Override
     public ByteBuf setBoolean(int index, boolean value) {
-        setByte(index, value? 1 : 0);
+        setByte(index, value ? 1 : 0);
         return this;
     }
 
@@ -682,7 +683,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
 
         int nLong = length >>> 3;
         int nBytes = length & 7;
-        for (int i = nLong; i > 0; i --) {
+        for (int i = nLong; i > 0; i--) {
             _setLong(index, 0);
             index += 8;
         }
@@ -690,16 +691,16 @@ public abstract class AbstractByteBuf extends ByteBuf {
             _setInt(index, 0);
             // Not need to update the index as we not will use it after this.
         } else if (nBytes < 4) {
-            for (int i = nBytes; i > 0; i --) {
+            for (int i = nBytes; i > 0; i--) {
                 _setByte(index, (byte) 0);
-                index ++;
+                index++;
             }
         } else {
             _setInt(index, 0);
             index += 4;
-            for (int i = nBytes - 4; i > 0; i --) {
+            for (int i = nBytes - 4; i > 0; i--) {
                 _setByte(index, (byte) 0);
-                index ++;
+                index++;
             }
         }
         return this;
@@ -1173,7 +1174,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
 
         int nLong = length >>> 3;
         int nBytes = length & 7;
-        for (int i = nLong; i > 0; i --) {
+        for (int i = nLong; i > 0; i--) {
             _setLong(wIndex, 0);
             wIndex += 8;
         }
@@ -1181,14 +1182,14 @@ public abstract class AbstractByteBuf extends ByteBuf {
             _setInt(wIndex, 0);
             wIndex += 4;
         } else if (nBytes < 4) {
-            for (int i = nBytes; i > 0; i --) {
+            for (int i = nBytes; i > 0; i--) {
                 _setByte(wIndex, (byte) 0);
                 wIndex++;
             }
         } else {
             _setInt(wIndex, 0);
             wIndex += 4;
-            for (int i = nBytes - 4; i > 0; i --) {
+            for (int i = nBytes - 4; i > 0; i--) {
                 _setByte(wIndex, (byte) 0);
                 wIndex++;
             }
@@ -1277,7 +1278,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
         }
         checkIndex(fromIndex, toIndex - fromIndex);
 
-        for (int i = fromIndex; i < toIndex; i ++) {
+        for (int i = fromIndex; i < toIndex; i++) {
             if (_getByte(i) == value) {
                 return i;
             }
@@ -1294,7 +1295,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
 
         checkIndex(toIndex, fromIndex - toIndex);
 
-        for (int i = fromIndex - 1; i >= toIndex; i --) {
+        for (int i = fromIndex - 1; i >= toIndex; i--) {
             if (_getByte(i) == value) {
                 return i;
             }
@@ -1408,10 +1409,10 @@ public abstract class AbstractByteBuf extends ByteBuf {
         }
 
         StringBuilder buf = new StringBuilder()
-            .append(StringUtil.simpleClassName(this))
-            .append("(ridx: ").append(readerIndex)
-            .append(", widx: ").append(writerIndex)
-            .append(", cap: ").append(capacity());
+                .append(StringUtil.simpleClassName(this))
+                .append("(ridx: ").append(readerIndex)
+                .append(", widx: ").append(writerIndex)
+                .append(", cap: ").append(capacity());
         if (maxCapacity != Integer.MAX_VALUE) {
             buf.append('/').append(maxCapacity);
         }
@@ -1434,7 +1435,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
     }
 
     private static void checkRangeBounds(final String indexName, final int index,
-            final int fieldLength, final int capacity) {
+                                         final int fieldLength, final int capacity) {
         if (isOutOfBounds(index, fieldLength, capacity)) {
             throw new IndexOutOfBoundsException(String.format(
                     "%s: %d, length: %d (expected: range(0, %d))", indexName, index, fieldLength, capacity));

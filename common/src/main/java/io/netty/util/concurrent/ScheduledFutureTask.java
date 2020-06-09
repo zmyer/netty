@@ -24,6 +24,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
+//FGTODO: 2019/10/31 下午7:32 zmyer
 @SuppressWarnings("ComparableImplementedButEqualsNotOverridden")
 final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFuture<V>, PriorityQueueNode {
     private static final long START_TIME = System.nanoTime();
@@ -52,7 +53,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
     private int queueIndex = INDEX_NOT_IN_QUEUE;
 
     ScheduledFutureTask(AbstractScheduledEventExecutor executor,
-            Runnable runnable, long nanoTime) {
+                        Runnable runnable, long nanoTime) {
 
         super(executor, runnable);
         deadlineNanos = nanoTime;
@@ -60,7 +61,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
     }
 
     ScheduledFutureTask(AbstractScheduledEventExecutor executor,
-            Runnable runnable, long nanoTime, long period) {
+                        Runnable runnable, long nanoTime, long period) {
 
         super(executor, runnable);
         deadlineNanos = nanoTime;
@@ -68,7 +69,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
     }
 
     ScheduledFutureTask(AbstractScheduledEventExecutor executor,
-            Callable<V> callable, long nanoTime, long period) {
+                        Callable<V> callable, long nanoTime, long period) {
 
         super(executor, callable);
         deadlineNanos = nanoTime;
@@ -76,7 +77,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
     }
 
     ScheduledFutureTask(AbstractScheduledEventExecutor executor,
-            Callable<V> callable, long nanoTime) {
+                        Callable<V> callable, long nanoTime) {
 
         super(executor, callable);
         deadlineNanos = nanoTime;
@@ -199,10 +200,10 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
         buf.setCharAt(buf.length() - 1, ',');
 
         return buf.append(" deadline: ")
-                  .append(deadlineNanos)
-                  .append(", period: ")
-                  .append(periodNanos)
-                  .append(')');
+                .append(deadlineNanos)
+                .append(", period: ")
+                .append(periodNanos)
+                .append(')');
     }
 
     @Override

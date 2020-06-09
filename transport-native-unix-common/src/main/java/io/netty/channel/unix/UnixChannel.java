@@ -20,6 +20,7 @@ import io.netty.channel.Channel;
 /**
  * {@link Channel} that expose operations that are only present on {@code UNIX} like systems.
  */
+//FGTODO: 2019/10/31 下午7:39 zmyer
 public interface UnixChannel extends Channel {
     /**
      * Returns the {@link FileDescriptor} that is used by this {@link Channel}.

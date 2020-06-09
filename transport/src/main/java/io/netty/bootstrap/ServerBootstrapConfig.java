@@ -27,6 +27,7 @@ import java.util.Map;
 /**
  * Exposes the configuration of a {@link ServerBootstrapConfig}.
  */
+//FGTODO: 2019/10/31 下午7:16 zmyer
 public final class ServerBootstrapConfig extends AbstractBootstrapConfig<ServerBootstrap, ServerChannel> {
 
     ServerBootstrapConfig(ServerBootstrap bootstrap) {

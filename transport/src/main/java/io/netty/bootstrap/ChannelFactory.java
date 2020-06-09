@@ -20,6 +20,7 @@ import io.netty.channel.Channel;
 /**
  * @deprecated Use {@link io.netty.channel.ChannelFactory} instead.
  */
+//FGTODO: 2019/10/31 下午7:01 zmyer
 @Deprecated
 public interface ChannelFactory<T extends Channel> {
     /**

@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Default {@link AttributeMap} implementation which use simple synchronization per bucket to keep the memory overhead
  * as low as possible.
  */
+//FGTODO: 2019/11/1 下午2:45 zmyer
 public class DefaultAttributeMap implements AttributeMap {
 
     @SuppressWarnings("rawtypes")
@@ -30,7 +31,7 @@ public class DefaultAttributeMap implements AttributeMap {
             AtomicReferenceFieldUpdater.newUpdater(DefaultAttributeMap.class, AtomicReferenceArray.class, "attributes");
 
     private static final int BUCKET_SIZE = 4;
-    private static final int MASK = BUCKET_SIZE  - 1;
+    private static final int MASK = BUCKET_SIZE - 1;
 
     // Initialize lazily to reduce memory consumption; updated by AtomicReferenceFieldUpdater above.
     @SuppressWarnings("UnusedDeclaration")
@@ -71,7 +72,7 @@ public class DefaultAttributeMap implements AttributeMap {
 
         synchronized (head) {
             DefaultAttribute<?> curr = head;
-            for (;;) {
+            for (; ; ) {
                 DefaultAttribute<?> next = curr.next;
                 if (next == null) {
                     DefaultAttribute<T> attr = new DefaultAttribute<T>(head, key);

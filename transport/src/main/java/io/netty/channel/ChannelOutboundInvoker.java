@@ -21,6 +21,7 @@ import io.netty.util.concurrent.FutureListener;
 import java.net.ConnectException;
 import java.net.SocketAddress;
 
+//FGTODO: 2019/10/31 下午6:58 zmyer
 public interface ChannelOutboundInvoker {
 
     /**
@@ -76,7 +77,7 @@ public interface ChannelOutboundInvoker {
      * Request to close the {@link Channel} and notify the {@link ChannelFuture} once the operation completes,
      * either because the operation was successful or because of
      * an error.
-     *
+     * <p>
      * After it is closed it is not possible to reuse it again.
      * <p>
      * This will result in having the
@@ -95,14 +96,13 @@ public interface ChannelOutboundInvoker {
      * {@link ChannelOutboundHandler#deregister(ChannelHandlerContext, ChannelPromise)}
      * method called of the next {@link ChannelOutboundHandler} contained in the {@link ChannelPipeline} of the
      * {@link Channel}.
-     *
      */
     ChannelFuture deregister();
 
     /**
      * Request to bind to the given {@link SocketAddress} and notify the {@link ChannelFuture} once the operation
      * completes, either because the operation was successful or because of an error.
-     *
+     * <p>
      * The given {@link ChannelPromise} will be notified.
      * <p>
      * This will result in having the
@@ -115,7 +115,7 @@ public interface ChannelOutboundInvoker {
     /**
      * Request to connect to the given {@link SocketAddress} and notify the {@link ChannelFuture} once the operation
      * completes, either because the operation was successful or because of an error.
-     *
+     * <p>
      * The given {@link ChannelFuture} will be notified.
      *
      * <p>
@@ -134,7 +134,7 @@ public interface ChannelOutboundInvoker {
      * Request to connect to the given {@link SocketAddress} while bind to the localAddress and notify the
      * {@link ChannelFuture} once the operation completes, either because the operation was successful or because of
      * an error.
-     *
+     * <p>
      * The given {@link ChannelPromise} will be notified and also returned.
      * <p>
      * This will result in having the
@@ -147,7 +147,7 @@ public interface ChannelOutboundInvoker {
     /**
      * Request to disconnect from the remote peer and notify the {@link ChannelFuture} once the operation completes,
      * either because the operation was successful or because of an error.
-     *
+     * <p>
      * The given {@link ChannelPromise} will be notified.
      * <p>
      * This will result in having the
@@ -161,7 +161,7 @@ public interface ChannelOutboundInvoker {
      * Request to close the {@link Channel} and notify the {@link ChannelFuture} once the operation completes,
      * either because the operation was successful or because of
      * an error.
-     *
+     * <p>
      * After it is closed it is not possible to reuse it again.
      * The given {@link ChannelPromise} will be notified.
      * <p>
@@ -176,7 +176,7 @@ public interface ChannelOutboundInvoker {
      * Request to deregister from the previous assigned {@link EventExecutor} and notify the
      * {@link ChannelFuture} once the operation completes, either because the operation was successful or because of
      * an error.
-     *
+     * <p>
      * The given {@link ChannelPromise} will be notified.
      * <p>
      * This will result in having the

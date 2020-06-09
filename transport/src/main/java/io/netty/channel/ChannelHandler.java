@@ -59,7 +59,7 @@ import java.lang.annotation.Target;
  * (using {@link AttributeKey}s) which is specific to the handler.
  *
  * <h3>State management</h3>
- *
+ * <p>
  * A {@link ChannelHandler} often needs to store some stateful information.
  * The simplest and recommended approach is to use member variables:
  * <pre>
@@ -104,7 +104,7 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * <h4>Using {@link AttributeKey}s</h4>
- *
+ * <p>
  * Although it's recommended to use member variables to store the state of a
  * handler, for some reason you might not want to create many handler instances.
  * In such a case, you can use {@link AttributeKey}s which is provided by
@@ -175,6 +175,7 @@ import java.lang.annotation.Target;
  * what fundamental differences they have, how they flow in a  pipeline,  and how to handle
  * the operation in your application.
  */
+//FGTODO: 2019/10/31 下午7:05 zmyer
 public interface ChannelHandler {
 
     /**

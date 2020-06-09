@@ -18,6 +18,7 @@ package io.netty.util.concurrent;
 /**
  * Expose details for a {@link Thread}.
  */
+//FGTODO: 2019/11/1 下午2:10 zmyer
 public interface ThreadProperties {
     /**
      * @see Thread#getState()

@@ -24,6 +24,7 @@ import java.lang.reflect.TypeVariable;
 import java.util.HashMap;
 import java.util.Map;
 
+//FGTODO: 2019/10/31 下午7:19 zmyer
 public abstract class TypeParameterMatcher {
 
     private static final TypeParameterMatcher NOOP = new TypeParameterMatcher() {
@@ -77,11 +78,11 @@ public abstract class TypeParameterMatcher {
 
         final Class<?> thisClass = object.getClass();
         Class<?> currentClass = thisClass;
-        for (;;) {
+        for (; ; ) {
             if (currentClass.getSuperclass() == parametrizedSuperclass) {
                 int typeParamIndex = -1;
                 TypeVariable<?>[] typeParams = currentClass.getSuperclass().getTypeParameters();
-                for (int i = 0; i < typeParams.length; i ++) {
+                for (int i = 0; i < typeParams.length; i++) {
                     if (typeParamName.equals(typeParams[i].getName())) {
                         typeParamIndex = i;
                         break;
@@ -162,5 +163,6 @@ public abstract class TypeParameterMatcher {
         }
     }
 
-    TypeParameterMatcher() { }
+    TypeParameterMatcher() {
+    }
 }

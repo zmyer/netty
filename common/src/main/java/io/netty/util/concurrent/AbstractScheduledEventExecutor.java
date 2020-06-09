@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Abstract base class for {@link EventExecutor}s that want to support scheduling.
  */
+//FGTODO: 2019/10/31 下午7:32 zmyer
 public abstract class AbstractScheduledEventExecutor extends AbstractEventExecutor {
     private static final Comparator<ScheduledFutureTask<?>> SCHEDULED_FUTURE_TASK_COMPARATOR =
             new Comparator<ScheduledFutureTask<?>>() {
@@ -56,6 +57,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
     /**
      * Given an arbitrary deadline {@code deadlineNanos}, calculate the number of nano seconds from now
      * {@code deadlineNanos} would expire.
+     *
      * @param deadlineNanos An arbitrary deadline in nano seconds.
      * @return the number of nano seconds from now {@code deadlineNanos} would expire.
      */
@@ -65,6 +67,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
 
     /**
      * The initial value used for delay and computations based upon a monatomic time source.
+     *
      * @return initial value used for delay and computations based upon a monatomic time source.
      */
     protected static long initialNanoTime() {
@@ -87,7 +90,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
 
     /**
      * Cancel all scheduled tasks.
-     *
+     * <p>
      * This method MUST be called only when {@link #inEventLoop()} is {@code true}.
      */
     protected void cancelScheduledTasks() {
@@ -97,10 +100,9 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
             return;
         }
 
-        final ScheduledFutureTask<?>[] scheduledTasks =
-                scheduledTaskQueue.toArray(new ScheduledFutureTask<?>[0]);
+        final ScheduledFutureTask<?>[] scheduledTasks = scheduledTaskQueue.toArray(new ScheduledFutureTask<?>[0]);
 
-        for (ScheduledFutureTask<?> task: scheduledTasks) {
+        for (ScheduledFutureTask<?> task : scheduledTasks) {
             task.cancelWithoutRemove(false);
         }
 
@@ -271,14 +273,15 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
      * Execute a {@link Runnable} from outside the event loop thread that is responsible for adding or removing
      * a scheduled action. Note that schedule events which occur on the event loop thread do not interact with this
      * method.
-     * @param runnable The {@link Runnable} to execute which will add or remove a scheduled action
-     * @param isAddition {@code true} if the {@link Runnable} will add an action, {@code false} if it will remove an
-     *                   action
+     *
+     * @param runnable      The {@link Runnable} to execute which will add or remove a scheduled action
+     * @param isAddition    {@code true} if the {@link Runnable} will add an action, {@code false} if it will remove an
+     *                      action
      * @param deadlineNanos the deadline in nanos of the scheduled task that will be added or removed.
      */
     void executeScheduledRunnable(Runnable runnable,
-                                            @SuppressWarnings("unused") boolean isAddition,
-                                            @SuppressWarnings("unused") long deadlineNanos) {
+                                  @SuppressWarnings("unused") boolean isAddition,
+                                  @SuppressWarnings("unused") long deadlineNanos) {
         execute(runnable);
     }
 }

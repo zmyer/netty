@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Abstract base class for {@link EventExecutor} implementations.
  */
+//FGTODO: 2019/10/31 下午7:32 zmyer
 public abstract class AbstractEventExecutor extends AbstractExecutorService implements EventExecutor {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractEventExecutor.class);
 

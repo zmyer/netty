@@ -24,6 +24,7 @@ import java.util.concurrent.locks.LockSupport;
 /**
  * Expose helper methods which create different {@link RejectedExecutionHandler}s.
  */
+//FGTODO: 2019/10/31 下午7:47 zmyer
 public final class RejectedExecutionHandlers {
     private static final RejectedExecutionHandler REJECT = new RejectedExecutionHandler() {
         @Override
@@ -32,7 +33,8 @@ public final class RejectedExecutionHandlers {
         }
     };
 
-    private RejectedExecutionHandlers() { }
+    private RejectedExecutionHandlers() {
+    }
 
     /**
      * Returns a {@link RejectedExecutionHandler} that will always just throw a {@link RejectedExecutionException}.

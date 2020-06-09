@@ -55,6 +55,7 @@ import static io.netty.channel.internal.ChannelUtils.WRITE_STATUS_SNDBUF_FULL;
 import static io.netty.channel.unix.UnixChannelUtil.computeRemoteAddr;
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
 
+//FGTODO: 2019/10/31 下午7:39 zmyer
 abstract class AbstractEpollChannel extends AbstractChannel implements UnixChannel {
     private static final ChannelMetadata METADATA = new ChannelMetadata(false);
     final LinuxSocket socket;
@@ -499,6 +500,7 @@ abstract class AbstractEpollChannel extends AbstractChannel implements UnixChann
 
         /**
          * Create a new {@link EpollRecvByteAllocatorHandle} instance.
+         *
          * @param handle The handle to wrap with EPOLL specific logic.
          */
         EpollRecvByteAllocatorHandle newEpollHandle(RecvByteBufAllocator.ExtendedHandle handle) {

@@ -20,6 +20,7 @@ import io.netty.util.internal.PlatformDependent;
 
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
@@ -32,6 +33,7 @@ import java.security.PrivilegedExceptionAction;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+//FGTODO: 2019/10/31 下午7:11 zmyer
 final class ChannelHandlerMask {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(ChannelHandlerMask.class);
 
@@ -172,7 +174,7 @@ final class ChannelHandlerMask {
                     m = handlerType.getMethod(methodName, paramTypes);
                 } catch (NoSuchMethodException e) {
                     logger.debug(
-                        "Class {} missing method {}, assume we can not skip execution", handlerType, methodName, e);
+                            "Class {} missing method {}, assume we can not skip execution", handlerType, methodName, e);
                     return false;
                 }
                 return m != null && m.isAnnotationPresent(Skip.class);
@@ -180,7 +182,8 @@ final class ChannelHandlerMask {
         });
     }
 
-    private ChannelHandlerMask() { }
+    private ChannelHandlerMask() {
+    }
 
     /**
      * Indicates that the annotated event handler method in {@link ChannelHandler} will not be invoked by

@@ -32,6 +32,7 @@ import java.util.concurrent.ThreadFactory;
  * {@link EventLoopGroup} which uses epoll under the covers. Because of this
  * it only works on linux.
  */
+//FGTODO: 2019/11/1 下午2:09 zmyer
 public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
     {
         // Ensure JNI is initialized by the time this class is loaded.
@@ -84,7 +85,7 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
      * Create a new instance using the specified number of threads, the given {@link ThreadFactory} and the given
      * maximal amount of epoll events to handle per epollWait(...).
      *
-     * @deprecated  Use {@link #EpollEventLoopGroup(int)} or {@link #EpollEventLoopGroup(int, ThreadFactory)}
+     * @deprecated Use {@link #EpollEventLoopGroup(int)} or {@link #EpollEventLoopGroup(int, ThreadFactory)}
      */
     @Deprecated
     public EpollEventLoopGroup(int nThreads, ThreadFactory threadFactory, int maxEventsAtOnce) {
@@ -95,7 +96,7 @@ public final class EpollEventLoopGroup extends MultithreadEventLoopGroup {
      * Create a new instance using the specified number of threads, the given {@link ThreadFactory} and the given
      * maximal amount of epoll events to handle per epollWait(...).
      *
-     * @deprecated  Use {@link #EpollEventLoopGroup(int)}, {@link #EpollEventLoopGroup(int, ThreadFactory)}, or
+     * @deprecated Use {@link #EpollEventLoopGroup(int)}, {@link #EpollEventLoopGroup(int, ThreadFactory)}, or
      * {@link #EpollEventLoopGroup(int, SelectStrategyFactory)}
      */
     @Deprecated

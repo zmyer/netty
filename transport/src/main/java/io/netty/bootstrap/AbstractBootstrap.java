@@ -49,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>When not used in a {@link ServerBootstrap} context, the {@link #bind()} methods are useful for connectionless
  * transports such as datagram (UDP).</p>
  */
+//FGTODO: 2019/10/31 下午6:57 zmyer
 public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C extends Channel> implements Cloneable {
 
     volatile EventLoopGroup group;
@@ -122,7 +123,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * has a no-args constructor, its highly recommend to just use {@link #channel(Class)} to
      * simplify your code.
      */
-    @SuppressWarnings({ "unchecked", "deprecation" })
+    @SuppressWarnings({"unchecked", "deprecation"})
     public B channelFactory(io.netty.channel.ChannelFactory<? extends C> channelFactory) {
         return channelFactory((ChannelFactory<C>) channelFactory);
     }
@@ -410,7 +411,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     }
 
     static void setAttributes(Channel channel, Map.Entry<AttributeKey<?>, Object>[] attrs) {
-        for (Map.Entry<AttributeKey<?>, Object> e: attrs) {
+        for (Map.Entry<AttributeKey<?>, Object> e : attrs) {
             @SuppressWarnings("unchecked")
             AttributeKey<Object> key = (AttributeKey<Object>) e.getKey();
             channel.attr(key).set(e.getValue());
@@ -419,7 +420,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
 
     static void setChannelOptions(
             Channel channel, Map.Entry<ChannelOption<?>, Object>[] options, InternalLogger logger) {
-        for (Map.Entry<ChannelOption<?>, Object> e: options) {
+        for (Map.Entry<ChannelOption<?>, Object> e : options) {
             setChannelOption(channel, e.getKey(), e.getValue(), logger);
         }
     }
@@ -449,10 +450,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
 
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder()
-            .append(StringUtil.simpleClassName(this))
-            .append('(').append(config()).append(')');
-        return buf.toString();
+        return StringUtil.simpleClassName(this) + '(' + config() + ')';
     }
 
     static final class PendingRegistrationPromise extends DefaultChannelPromise {
