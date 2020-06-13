@@ -15,10 +15,11 @@
  */
 package io.netty.handler.codec.http;
 
+import static java.util.Objects.requireNonNull;
+
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -27,7 +28,6 @@ import java.util.List;
 import io.netty.util.AsciiString;
 import io.netty.util.CharsetUtil;
 import io.netty.util.NetUtil;
-import io.netty.util.internal.ObjectUtil;
 
 /**
  * Utility methods useful in the HTTP context.
@@ -300,7 +300,7 @@ public final class HttpUtil {
      * @return True if transfer encoding is chunked, otherwise false
      */
     public static boolean isTransferEncodingChunked(HttpMessage message) {
-        return message.headers().containsValue(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED, true);
+        return message.headers().contains(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED, true);
     }
 
     /**
@@ -320,7 +320,7 @@ public final class HttpUtil {
             if (encodings.isEmpty()) {
                 return;
             }
-            List<CharSequence> values = new ArrayList<CharSequence>(encodings);
+            List<CharSequence> values = new ArrayList<>(encodings);
             Iterator<CharSequence> valuesIt = values.iterator();
             while (valuesIt.hasNext()) {
                 CharSequence value = valuesIt.next();
@@ -393,14 +393,15 @@ public final class HttpUtil {
             if (charsetCharSequence != null) {
                 try {
                     return Charset.forName(charsetCharSequence.toString());
-                } catch (IllegalCharsetNameException ignored) {
-                    // just return the default charset
                 } catch (UnsupportedCharsetException ignored) {
-                    // just return the default charset
+                    return defaultCharset;
                 }
+            } else {
+                return defaultCharset;
             }
+        } else {
+            return defaultCharset;
         }
-        return defaultCharset;
     }
 
     /**
@@ -449,7 +450,7 @@ public final class HttpUtil {
      * @throws NullPointerException in case if {@code contentTypeValue == null}
      */
     public static CharSequence getCharsetAsSequence(CharSequence contentTypeValue) {
-        ObjectUtil.checkNotNull(contentTypeValue, "contentTypeValue");
+        requireNonNull(contentTypeValue, "contentTypeValue");
 
         int indexOfCharset = AsciiString.indexOfIgnoreCaseAscii(contentTypeValue, CHARSET_EQUALS, 0);
         if (indexOfCharset == AsciiString.INDEX_NOT_FOUND) {
@@ -503,7 +504,7 @@ public final class HttpUtil {
      * @throws NullPointerException in case if {@code contentTypeValue == null}
      */
     public static CharSequence getMimeType(CharSequence contentTypeValue) {
-        ObjectUtil.checkNotNull(contentTypeValue, "contentTypeValue");
+        requireNonNull(contentTypeValue, "contentTypeValue");
 
         int indexOfSemicolon = AsciiString.indexOfIgnoreCaseAscii(contentTypeValue, SEMICOLON, 0);
         if (indexOfSemicolon != AsciiString.INDEX_NOT_FOUND) {
@@ -515,7 +516,7 @@ public final class HttpUtil {
 
     /**
      * Formats the host string of an address so it can be used for computing an HTTP component
-     * such as a URL or a Host header
+     * such as an URL or a Host header
      *
      * @param addr the address
      * @return the formatted String

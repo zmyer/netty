@@ -15,11 +15,8 @@
  */
 package io.netty.handler.codec.http.cookie;
 
-import io.netty.handler.codec.http.cookie.CookieHeaderNames.SameSite;
-
-import static io.netty.handler.codec.http.cookie.CookieUtil.stringBuilder;
-import static io.netty.handler.codec.http.cookie.CookieUtil.validateAttributeValue;
-import static io.netty.util.internal.ObjectUtil.checkNotNull;
+import static io.netty.handler.codec.http.cookie.CookieUtil.*;
+import static java.util.Objects.requireNonNull;
 
 /**
  * The default {@link Cookie} implementation.
@@ -34,13 +31,12 @@ public class DefaultCookie implements Cookie {
     private long maxAge = UNDEFINED_MAX_AGE;
     private boolean secure;
     private boolean httpOnly;
-    private SameSite sameSite;
 
     /**
      * Creates a new cookie with the specified name and value.
      */
     public DefaultCookie(String name, String value) {
-        name = checkNotNull(name, "name").trim();
+        name = requireNonNull(name, "name").trim();
         if (name.isEmpty()) {
             throw new IllegalArgumentException("empty name");
         }
@@ -60,7 +56,7 @@ public class DefaultCookie implements Cookie {
 
     @Override
     public void setValue(String value) {
-        this.value = checkNotNull(value, "value");
+        this.value = requireNonNull(value, "value");
     }
 
     @Override
@@ -121,26 +117,6 @@ public class DefaultCookie implements Cookie {
     @Override
     public void setHttpOnly(boolean httpOnly) {
         this.httpOnly = httpOnly;
-    }
-
-    /**
-     * Checks to see if this {@link Cookie} can be sent along cross-site requests.
-     * For more information, please look
-     * <a href="https://tools.ietf.org/html/draft-ietf-httpbis-rfc6265bis-05">here</a>
-     * @return <b>same-site-flag</b> value
-     */
-    public SameSite sameSite() {
-        return sameSite;
-    }
-
-    /**
-     * Determines if this this {@link Cookie} can be sent along cross-site requests.
-     * For more information, please look
-     *  <a href="https://tools.ietf.org/html/draft-ietf-httpbis-rfc6265bis-05">here</a>
-     * @param sameSite <b>same-site-flag</b> value
-     */
-    public void setSameSite(SameSite sameSite) {
-        this.sameSite = sameSite;
     }
 
     @Override
@@ -218,19 +194,6 @@ public class DefaultCookie implements Cookie {
         return 0;
     }
 
-    /**
-     * Validate a cookie attribute value, throws a {@link IllegalArgumentException} otherwise.
-     * Only intended to be used by {@link io.netty.handler.codec.http.DefaultCookie}.
-     * @param name attribute name
-     * @param value attribute value
-     * @return the trimmed, validated attribute value
-     * @deprecated CookieUtil is package private, will be removed once old Cookie API is dropped
-     */
-    @Deprecated
-    protected String validateValue(String name, String value) {
-        return validateAttributeValue(name, value);
-    }
-
     @Override
     public String toString() {
         StringBuilder buf = stringBuilder()
@@ -255,9 +218,6 @@ public class DefaultCookie implements Cookie {
         }
         if (isHttpOnly()) {
             buf.append(", HTTPOnly");
-        }
-        if (sameSite() != null) {
-            buf.append(", SameSite=").append(sameSite());
         }
         return buf.toString();
     }

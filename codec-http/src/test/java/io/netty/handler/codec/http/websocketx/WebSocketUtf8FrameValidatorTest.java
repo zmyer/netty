@@ -36,9 +36,8 @@ public class WebSocketUtf8FrameValidatorTest {
 
     private void assertCorruptedFrameExceptionHandling(byte[] data) {
         EmbeddedChannel channel = new EmbeddedChannel(new Utf8FrameValidator());
-        TextWebSocketFrame frame = new TextWebSocketFrame(Unpooled.copiedBuffer(data));
         try {
-            channel.writeInbound(frame);
+            channel.writeInbound(new TextWebSocketFrame(Unpooled.copiedBuffer(data)));
             Assert.fail();
         } catch (CorruptedFrameException e) {
             // expected exception
@@ -52,6 +51,5 @@ public class WebSocketUtf8FrameValidatorTest {
             buf.release();
         }
         Assert.assertNull(channel.readOutbound());
-        Assert.assertEquals(0, frame.refCnt());
     }
 }

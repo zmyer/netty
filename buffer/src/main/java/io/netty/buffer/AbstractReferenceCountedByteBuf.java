@@ -23,7 +23,6 @@ import io.netty.util.internal.ReferenceCountUpdater;
 /**
  * Abstract base class for {@link ByteBuf} implementations that count references.
  */
-//FGTODO: 2019/11/1 下午2:32 zmyer
 public abstract class AbstractReferenceCountedByteBuf extends AbstractByteBuf {
     private static final long REFCNT_FIELD_OFFSET =
             ReferenceCountUpdater.getUnsafeOffset(AbstractReferenceCountedByteBuf.class, "refCnt");
@@ -32,16 +31,15 @@ public abstract class AbstractReferenceCountedByteBuf extends AbstractByteBuf {
 
     private static final ReferenceCountUpdater<AbstractReferenceCountedByteBuf> updater =
             new ReferenceCountUpdater<AbstractReferenceCountedByteBuf>() {
-                @Override
-                protected AtomicIntegerFieldUpdater<AbstractReferenceCountedByteBuf> updater() {
-                    return AIF_UPDATER;
-                }
-
-                @Override
-                protected long unsafeOffset() {
-                    return REFCNT_FIELD_OFFSET;
-                }
-            };
+        @Override
+        protected AtomicIntegerFieldUpdater<AbstractReferenceCountedByteBuf> updater() {
+            return AIF_UPDATER;
+        }
+        @Override
+        protected long unsafeOffset() {
+            return REFCNT_FIELD_OFFSET;
+        }
+    };
 
     // Value might not equal "real" reference count, all access should be via the updater
     @SuppressWarnings("unused")

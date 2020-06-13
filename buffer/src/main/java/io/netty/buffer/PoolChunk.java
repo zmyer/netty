@@ -132,7 +132,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
     // This may be null if the PoolChunk is unpooled as pooling the ByteBuffer instances does not make any sense here.
     private final Deque<ByteBuffer> cachedNioBuffers;
 
-    int freeBytes;
+    private int freeBytes;
 
     PoolChunkList<T> parent;
     PoolChunk<T> prev;
@@ -173,7 +173,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
         }
 
         subpages = newSubpageArray(maxSubpageAllocs);
-        cachedNioBuffers = new ArrayDeque<ByteBuffer>(8);
+        cachedNioBuffers = new ArrayDeque<>(8);
     }
 
     /** Creates a special chunk that is not pooled. */
@@ -222,7 +222,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
         return 100 - freePercentage;
     }
 
-    boolean allocate(PooledByteBuf<T> buf, int reqCapacity, int normCapacity, PoolThreadCache threadCache) {
+    boolean allocate(PooledByteBuf<T> buf, int reqCapacity, int normCapacity) {
         final long handle;
         if ((normCapacity & subpageOverflowMask) != 0) { // >= pageSize
             handle =  allocateRun(normCapacity);
@@ -234,7 +234,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
             return false;
         }
         ByteBuffer nioBuffer = cachedNioBuffers != null ? cachedNioBuffers.pollLast() : null;
-        initBuf(buf, nioBuffer, handle, reqCapacity, threadCache);
+        initBuf(buf, nioBuffer, handle, reqCapacity);
         return true;
     }
 
@@ -355,7 +355,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
             int subpageIdx = subpageIdx(id);
             PoolSubpage<T> subpage = subpages[subpageIdx];
             if (subpage == null) {
-                subpage = new PoolSubpage<T>(head, this, id, runOffset(id), pageSize, normCapacity);
+                subpage = new PoolSubpage<>(head, this, id, runOffset(id), pageSize, normCapacity);
                 subpages[subpageIdx] = subpage;
             } else {
                 subpage.init(head, normCapacity);
@@ -399,27 +399,25 @@ final class PoolChunk<T> implements PoolChunkMetric {
         }
     }
 
-    void initBuf(PooledByteBuf<T> buf, ByteBuffer nioBuffer, long handle, int reqCapacity,
-                 PoolThreadCache threadCache) {
+    void initBuf(PooledByteBuf<T> buf, ByteBuffer nioBuffer, long handle, int reqCapacity) {
         int memoryMapIdx = memoryMapIdx(handle);
         int bitmapIdx = bitmapIdx(handle);
         if (bitmapIdx == 0) {
             byte val = value(memoryMapIdx);
             assert val == unusable : String.valueOf(val);
             buf.init(this, nioBuffer, handle, runOffset(memoryMapIdx) + offset,
-                    reqCapacity, runLength(memoryMapIdx), threadCache);
+                    reqCapacity, runLength(memoryMapIdx), arena.parent.threadCache());
         } else {
-            initBufWithSubpage(buf, nioBuffer, handle, bitmapIdx, reqCapacity, threadCache);
+            initBufWithSubpage(buf, nioBuffer, handle, bitmapIdx, reqCapacity);
         }
     }
 
-    void initBufWithSubpage(PooledByteBuf<T> buf, ByteBuffer nioBuffer, long handle, int reqCapacity,
-                            PoolThreadCache threadCache) {
-        initBufWithSubpage(buf, nioBuffer, handle, bitmapIdx(handle), reqCapacity, threadCache);
+    void initBufWithSubpage(PooledByteBuf<T> buf, ByteBuffer nioBuffer, long handle, int reqCapacity) {
+        initBufWithSubpage(buf, nioBuffer, handle, bitmapIdx(handle), reqCapacity);
     }
 
     private void initBufWithSubpage(PooledByteBuf<T> buf, ByteBuffer nioBuffer,
-                                    long handle, int bitmapIdx, int reqCapacity, PoolThreadCache threadCache) {
+                                    long handle, int bitmapIdx, int reqCapacity) {
         assert bitmapIdx != 0;
 
         int memoryMapIdx = memoryMapIdx(handle);
@@ -431,7 +429,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
         buf.init(
             this, nioBuffer, handle,
             runOffset(memoryMapIdx) + (bitmapIdx & 0x3FFFFFFF) * subpage.elemSize + offset,
-                reqCapacity, subpage.elemSize, threadCache);
+                reqCapacity, subpage.elemSize, arena.parent.threadCache());
     }
 
     private byte value(int id) {

@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import static io.netty.util.internal.PriorityQueueNode.INDEX_NOT_IN_QUEUE;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A priority queue which uses natural ordering of elements. Elements are also required to be of type
@@ -39,7 +40,7 @@ public final class DefaultPriorityQueue<T extends PriorityQueueNode> extends Abs
 
     @SuppressWarnings("unchecked")
     public DefaultPriorityQueue(Comparator<T> comparator, int initialSize) {
-        this.comparator = ObjectUtil.checkNotNull(comparator, "comparator");
+        this.comparator = requireNonNull(comparator, "comparator");
         queue = (T[]) (initialSize != 0 ? new PriorityQueueNode[initialSize] : EMPTY_ARRAY);
     }
 

@@ -19,14 +19,11 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.util.internal.UnstableApi;
 
-import static io.netty.util.internal.ObjectUtil.checkNotNull;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A builder for {@link Http2MultiplexCodec}.
- *
- * @deprecated use {@link Http2FrameCodecBuilder} together with {@link Http2MultiplexHandler}.
  */
-@Deprecated
 @UnstableApi
 public class Http2MultiplexCodecBuilder
         extends AbstractHttp2ConnectionHandlerBuilder<Http2MultiplexCodec, Http2MultiplexCodecBuilder> {
@@ -37,9 +34,7 @@ public class Http2MultiplexCodecBuilder
 
     Http2MultiplexCodecBuilder(boolean server, ChannelHandler childHandler) {
         server(server);
-        this.childHandler = checkSharable(checkNotNull(childHandler, "childHandler"));
-        // For backwards compatibility we should disable to timeout by default at this layer.
-        gracefulShutdownTimeoutMillis(0);
+        this.childHandler = checkSharable(requireNonNull(childHandler, "childHandler"));
     }
 
     private static ChannelHandler checkSharable(ChannelHandler handler) {
@@ -52,12 +47,12 @@ public class Http2MultiplexCodecBuilder
 
     // For testing only.
     Http2MultiplexCodecBuilder frameWriter(Http2FrameWriter frameWriter) {
-        this.frameWriter = checkNotNull(frameWriter, "frameWriter");
+        this.frameWriter = requireNonNull(frameWriter, "frameWriter");
         return this;
     }
 
     /**
-     * Creates a builder for an HTTP/2 client.
+     * Creates a builder for a HTTP/2 client.
      *
      * @param childHandler the handler added to channels for remotely-created streams. It must be
      *     {@link ChannelHandler.Sharable}.
@@ -67,21 +62,13 @@ public class Http2MultiplexCodecBuilder
     }
 
     /**
-     * Creates a builder for an HTTP/2 server.
+     * Creates a builder for a HTTP/2 server.
      *
      * @param childHandler the handler added to channels for remotely-created streams. It must be
      *     {@link ChannelHandler.Sharable}.
      */
     public static Http2MultiplexCodecBuilder forServer(ChannelHandler childHandler) {
         return new Http2MultiplexCodecBuilder(true, childHandler);
-    }
-
-    public Http2MultiplexCodecBuilder withUpgradeStreamHandler(ChannelHandler upgradeStreamHandler) {
-        if (this.isServer()) {
-            throw new IllegalArgumentException("Server codecs don't use an extra handler for the upgrade stream");
-        }
-        this.upgradeStreamHandler = upgradeStreamHandler;
-        return this;
     }
 
     @Override
@@ -102,6 +89,14 @@ public class Http2MultiplexCodecBuilder
     @Override
     public Http2MultiplexCodecBuilder gracefulShutdownTimeoutMillis(long gracefulShutdownTimeoutMillis) {
         return super.gracefulShutdownTimeoutMillis(gracefulShutdownTimeoutMillis);
+    }
+
+    public Http2MultiplexCodecBuilder withUpgradeStreamHandler(ChannelHandler upgradeStreamHandler) {
+        if (this.isServer()) {
+            throw new IllegalArgumentException("Server codecs don't use an extra handler for the upgrade stream");
+        }
+        this.upgradeStreamHandler = upgradeStreamHandler;
+        return this;
     }
 
     @Override
@@ -150,16 +145,6 @@ public class Http2MultiplexCodecBuilder
     }
 
     @Override
-    public int encoderEnforceMaxQueuedControlFrames() {
-        return super.encoderEnforceMaxQueuedControlFrames();
-    }
-
-    @Override
-    public Http2MultiplexCodecBuilder encoderEnforceMaxQueuedControlFrames(int maxQueuedControlFrames) {
-        return super.encoderEnforceMaxQueuedControlFrames(maxQueuedControlFrames);
-    }
-
-    @Override
     public Http2HeadersEncoder.SensitivityDetector headerSensitivityDetector() {
         return super.headerSensitivityDetector();
     }
@@ -176,34 +161,8 @@ public class Http2MultiplexCodecBuilder
     }
 
     @Override
-    @Deprecated
     public Http2MultiplexCodecBuilder initialHuffmanDecodeCapacity(int initialHuffmanDecodeCapacity) {
         return super.initialHuffmanDecodeCapacity(initialHuffmanDecodeCapacity);
-    }
-
-    @Override
-    public Http2MultiplexCodecBuilder autoAckSettingsFrame(boolean autoAckSettings) {
-        return super.autoAckSettingsFrame(autoAckSettings);
-    }
-
-    @Override
-    public Http2MultiplexCodecBuilder autoAckPingFrame(boolean autoAckPingFrame) {
-        return super.autoAckPingFrame(autoAckPingFrame);
-    }
-
-    @Override
-    public Http2MultiplexCodecBuilder decoupleCloseAndGoAway(boolean decoupleCloseAndGoAway) {
-        return super.decoupleCloseAndGoAway(decoupleCloseAndGoAway);
-    }
-
-    @Override
-    public int decoderEnforceMaxConsecutiveEmptyDataFrames() {
-        return super.decoderEnforceMaxConsecutiveEmptyDataFrames();
-    }
-
-    @Override
-    public Http2MultiplexCodecBuilder decoderEnforceMaxConsecutiveEmptyDataFrames(int maxConsecutiveEmptyFrames) {
-        return super.decoderEnforceMaxConsecutiveEmptyDataFrames(maxConsecutiveEmptyFrames);
     }
 
     @Override
@@ -215,8 +174,8 @@ public class Http2MultiplexCodecBuilder
             DefaultHttp2Connection connection = new DefaultHttp2Connection(isServer(), maxReservedStreams());
             Long maxHeaderListSize = initialSettings().maxHeaderListSize();
             Http2FrameReader frameReader = new DefaultHttp2FrameReader(maxHeaderListSize == null ?
-                    new DefaultHttp2HeadersDecoder(isValidateHeaders()) :
-                    new DefaultHttp2HeadersDecoder(isValidateHeaders(), maxHeaderListSize));
+                    new DefaultHttp2HeadersDecoder(true) :
+                    new DefaultHttp2HeadersDecoder(true, maxHeaderListSize));
 
             if (frameLogger() != null) {
                 frameWriter = new Http2OutboundFrameLogger(frameWriter, frameLogger());
@@ -226,13 +185,7 @@ public class Http2MultiplexCodecBuilder
             if (encoderEnforceMaxConcurrentStreams()) {
                 encoder = new StreamBufferingEncoder(encoder);
             }
-            Http2ConnectionDecoder decoder = new DefaultHttp2ConnectionDecoder(connection, encoder, frameReader,
-                    promisedRequestVerifier(), isAutoAckSettingsFrame(), isAutoAckPingFrame());
-
-            int maxConsecutiveEmptyDataFrames = decoderEnforceMaxConsecutiveEmptyDataFrames();
-            if (maxConsecutiveEmptyDataFrames > 0) {
-                decoder = new Http2EmptyDataFrameConnectionDecoder(decoder, maxConsecutiveEmptyDataFrames);
-            }
+            Http2ConnectionDecoder decoder = new DefaultHttp2ConnectionDecoder(connection, encoder, frameReader);
 
             return build(decoder, encoder, initialSettings());
         }
@@ -242,9 +195,6 @@ public class Http2MultiplexCodecBuilder
     @Override
     protected Http2MultiplexCodec build(
             Http2ConnectionDecoder decoder, Http2ConnectionEncoder encoder, Http2Settings initialSettings) {
-        Http2MultiplexCodec codec = new Http2MultiplexCodec(encoder, decoder, initialSettings, childHandler,
-                upgradeStreamHandler, decoupleCloseAndGoAway());
-        codec.gracefulShutdownTimeoutMillis(gracefulShutdownTimeoutMillis());
-        return codec;
+        return new Http2MultiplexCodec(encoder, decoder, initialSettings, childHandler, upgradeStreamHandler);
     }
 }

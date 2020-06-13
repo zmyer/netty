@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import static io.netty.util.internal.ObjectUtil.*;
+import static java.util.Objects.requireNonNull;
 
 /**
  * String utility class.
@@ -304,7 +304,7 @@ public final class StringUtil {
      * with anonymous classes.
      */
     public static String simpleClassName(Class<?> clazz) {
-        String className = checkNotNull(clazz, "clazz").getName();
+        String className = requireNonNull(clazz, "clazz").getName();
         final int lastDotIdx = className.lastIndexOf(PACKAGE_SEPARATOR_CHAR);
         if (lastDotIdx > -1) {
             return className.substring(lastDotIdx + 1);
@@ -335,7 +335,7 @@ public final class StringUtil {
      * @return {@link CharSequence} the escaped value if necessary, or the value unchanged
      */
     public static CharSequence escapeCsv(CharSequence value, boolean trimWhiteSpace) {
-        int length = checkNotNull(value, "value").length();
+        int length = requireNonNull(value, "value").length();
         int start;
         int last;
         if (trimWhiteSpace) {
@@ -421,7 +421,7 @@ public final class StringUtil {
      * @return {@link CharSequence} the unescaped value if necessary, or the value unchanged
      */
     public static CharSequence unescapeCsv(CharSequence value) {
-        int length = checkNotNull(value, "value").length();
+        int length = requireNonNull(value, "value").length();
         if (length == 0) {
             return value;
         }
@@ -458,7 +458,7 @@ public final class StringUtil {
      * @return {@link List} the list of unescaped fields
      */
     public static List<CharSequence> unescapeCsvFields(CharSequence value) {
-        List<CharSequence> unescaped = new ArrayList<CharSequence>(2);
+        List<CharSequence> unescaped = new ArrayList<>(2);
         StringBuilder current = InternalThreadLocalMap.get().stringBuilder();
         boolean quoted = false;
         int last = value.length() - 1;

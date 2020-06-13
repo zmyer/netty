@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 The Netty Project
+ * Copyright 2012 The Netty Project
  *
  * The Netty Project licenses this file to you under the Apache License,
  * version 2.0 (the "License"); you may not use this file except in compliance
@@ -14,6 +14,8 @@
  * under the License.
  */
 package io.netty.handler.codec.http.websocketx;
+
+import static java.util.Objects.requireNonNull;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -33,7 +35,7 @@ import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.EmptyArrays;
-import io.netty.util.internal.ObjectUtil;
+import io.netty.util.internal.ThrowableUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -47,6 +49,8 @@ import java.util.Set;
  */
 public abstract class WebSocketServerHandshaker {
     protected static final InternalLogger logger = InternalLoggerFactory.getInstance(WebSocketServerHandshaker.class);
+    private static final ClosedChannelException CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(
+            new ClosedChannelException(), WebSocketServerHandshaker.class, "handshake(...)");
 
     private final String uri;
 
@@ -54,7 +58,7 @@ public abstract class WebSocketServerHandshaker {
 
     private final WebSocketVersion version;
 
-    private final WebSocketDecoderConfig decoderConfig;
+    private final int maxFramePayloadLength;
 
     private String selectedSubprotocol;
 
@@ -79,26 +83,6 @@ public abstract class WebSocketServerHandshaker {
     protected WebSocketServerHandshaker(
             WebSocketVersion version, String uri, String subprotocols,
             int maxFramePayloadLength) {
-        this(version, uri, subprotocols, WebSocketDecoderConfig.newBuilder()
-            .maxFramePayloadLength(maxFramePayloadLength)
-            .build());
-    }
-
-    /**
-     * Constructor specifying the destination web socket location
-     *
-     * @param version
-     *            the protocol version
-     * @param uri
-     *            URL for web socket communications. e.g "ws://myhost.com/mypath". Subsequent web socket frames will be
-     *            sent to this URL.
-     * @param subprotocols
-     *            CSV of supported protocols. Null if sub protocols not supported.
-     * @param decoderConfig
-     *            Frames decoder configuration.
-     */
-    protected WebSocketServerHandshaker(
-            WebSocketVersion version, String uri, String subprotocols, WebSocketDecoderConfig decoderConfig) {
         this.version = version;
         this.uri = uri;
         if (subprotocols != null) {
@@ -110,7 +94,7 @@ public abstract class WebSocketServerHandshaker {
         } else {
             this.subprotocols = EmptyArrays.EMPTY_STRINGS;
         }
-        this.decoderConfig = ObjectUtil.checkNotNull(decoderConfig, "decoderConfig");
+        this.maxFramePayloadLength = maxFramePayloadLength;
     }
 
     /**
@@ -124,7 +108,7 @@ public abstract class WebSocketServerHandshaker {
      * Returns the CSV of supported sub protocols
      */
     public Set<String> subprotocols() {
-        Set<String> ret = new LinkedHashSet<String>();
+        Set<String> ret = new LinkedHashSet<>();
         Collections.addAll(ret, subprotocols);
         return ret;
     }
@@ -142,16 +126,7 @@ public abstract class WebSocketServerHandshaker {
      * @return The maximum length for a frame's payload
      */
     public int maxFramePayloadLength() {
-        return decoderConfig.maxFramePayloadLength();
-    }
-
-    /**
-     * Gets this decoder configuration.
-     *
-     * @return This decoder configuration.
-     */
-    public WebSocketDecoderConfig decoderConfig() {
-        return decoderConfig;
+        return maxFramePayloadLength;
     }
 
     /**
@@ -202,15 +177,15 @@ public abstract class WebSocketServerHandshaker {
         ChannelHandlerContext ctx = p.context(HttpRequestDecoder.class);
         final String encoderName;
         if (ctx == null) {
-            // this means the user use an HttpServerCodec
+            // this means the user use a HttpServerCodec
             ctx = p.context(HttpServerCodec.class);
             if (ctx == null) {
                 promise.setFailure(
                         new IllegalStateException("No HttpDecoder and no HttpServerCodec in the pipeline"));
                 return promise;
             }
-            p.addBefore(ctx.name(), "wsencoder", newWebSocketEncoder());
             p.addBefore(ctx.name(), "wsdecoder", newWebsocketDecoder());
+            p.addBefore(ctx.name(), "wsencoder", newWebSocketEncoder());
             encoderName = ctx.name();
         } else {
             p.replace(ctx.name(), "wsdecoder", newWebsocketDecoder());
@@ -218,16 +193,13 @@ public abstract class WebSocketServerHandshaker {
             encoderName = p.context(HttpResponseEncoder.class).name();
             p.addBefore(encoderName, "wsencoder", newWebSocketEncoder());
         }
-        channel.writeAndFlush(response).addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                if (future.isSuccess()) {
-                    ChannelPipeline p = future.channel().pipeline();
-                    p.remove(encoderName);
-                    promise.setSuccess();
-                } else {
-                    promise.setFailure(future.cause());
-                }
+        channel.writeAndFlush(response).addListener((ChannelFutureListener) future -> {
+            if (future.isSuccess()) {
+                ChannelPipeline p1 = future.channel().pipeline();
+                p1.remove(encoderName);
+                promise.setSuccess();
+            } else {
+                promise.setFailure(future.cause());
             }
         });
         return promise;
@@ -276,7 +248,7 @@ public abstract class WebSocketServerHandshaker {
         ChannelPipeline p = channel.pipeline();
         ChannelHandlerContext ctx = p.context(HttpRequestDecoder.class);
         if (ctx == null) {
-            // this means the user use an HttpServerCodec
+            // this means the user use a HttpServerCodec
             ctx = p.context(HttpServerCodec.class);
             if (ctx == null) {
                 promise.setFailure(
@@ -309,9 +281,7 @@ public abstract class WebSocketServerHandshaker {
             @Override
             public void channelInactive(ChannelHandlerContext ctx) throws Exception {
                 // Fail promise if Channel was closed
-                if (!promise.isDone()) {
-                    promise.tryFailure(new ClosedChannelException());
-                }
+                promise.tryFailure(CLOSED_CHANNEL_EXCEPTION);
                 ctx.fireChannelInactive();
             }
         });
@@ -337,7 +307,7 @@ public abstract class WebSocketServerHandshaker {
      *            Closing Frame that was received
      */
     public ChannelFuture close(Channel channel, CloseWebSocketFrame frame) {
-        ObjectUtil.checkNotNull(channel, "channel");
+        requireNonNull(channel, "channel");
         return close(channel, frame, channel.newPromise());
     }
 
@@ -352,7 +322,7 @@ public abstract class WebSocketServerHandshaker {
      *            the {@link ChannelPromise} to be notified when the closing handshake is done
      */
     public ChannelFuture close(Channel channel, CloseWebSocketFrame frame, ChannelPromise promise) {
-        ObjectUtil.checkNotNull(channel, "channel");
+        requireNonNull(channel, "channel");
         return channel.writeAndFlush(frame, promise).addListener(ChannelFutureListener.CLOSE);
     }
 

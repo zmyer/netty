@@ -15,6 +15,8 @@
  */
 package io.netty.handler.ssl;
 
+import io.netty.internal.tcnative.SSL;
+
 import javax.net.ssl.SSLException;
 import javax.net.ssl.X509ExtendedKeyManager;
 import javax.net.ssl.X509KeyManager;
@@ -46,7 +48,7 @@ final class OpenSslKeyMaterialManager {
     static final String KEY_TYPE_EC_RSA = "EC_RSA";
 
     // key type mappings for types.
-    private static final Map<String, String> KEY_TYPES = new HashMap<String, String>();
+    private static final Map<String, String> KEY_TYPES = new HashMap<>();
     static {
         KEY_TYPES.put("RSA", KEY_TYPE_RSA);
         KEY_TYPES.put("DHE_RSA", KEY_TYPE_RSA);
@@ -64,19 +66,15 @@ final class OpenSslKeyMaterialManager {
     }
 
     void setKeyMaterialServerSide(ReferenceCountedOpenSslEngine engine) throws SSLException {
-        String[] authMethods = engine.authMethods();
-        if (authMethods.length == 0) {
-            return;
-        }
-        Set<String> aliases = new HashSet<String>(authMethods.length);
+        long ssl = engine.sslPointer();
+        String[] authMethods = SSL.authenticationMethods(ssl);
+        Set<String> aliases = new HashSet<>(authMethods.length);
         for (String authMethod : authMethods) {
             String type = KEY_TYPES.get(authMethod);
             if (type != null) {
                 String alias = chooseServerAlias(engine, type);
                 if (alias != null && aliases.add(alias)) {
-                    if (!setKeyMaterial(engine, alias)) {
-                        return;
-                    }
+                    setKeyMaterial(engine, alias);
                 }
             }
         }
@@ -93,11 +91,13 @@ final class OpenSslKeyMaterialManager {
         }
     }
 
-    private boolean setKeyMaterial(ReferenceCountedOpenSslEngine engine, String alias) throws SSLException {
+    private void setKeyMaterial(ReferenceCountedOpenSslEngine engine, String alias) throws SSLException {
         OpenSslKeyMaterial keyMaterial = null;
         try {
             keyMaterial = provider.chooseKeyMaterial(engine.alloc, alias);
-            return keyMaterial == null || engine.setKeyMaterial(keyMaterial);
+            if (keyMaterial != null) {
+                engine.setKeyMaterial(keyMaterial);
+            }
         } catch (SSLException e) {
             throw e;
         } catch (Exception e) {

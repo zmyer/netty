@@ -15,6 +15,8 @@
  */
 package io.netty.handler.codec;
 
+import static java.util.Objects.requireNonNull;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.AddressedEnvelope;
 import io.netty.channel.ChannelHandlerContext;
@@ -23,8 +25,6 @@ import io.netty.channel.ChannelPromise;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
 import io.netty.util.internal.StringUtil;
-
-import static io.netty.util.internal.ObjectUtil.checkNotNull;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -38,7 +38,7 @@ import java.util.List;
  * {@link ChannelPipeline} pipeline = ...;
  * pipeline.addLast("udpEncoder", new {@link DatagramPacketEncoder}(new {@link ProtobufEncoder}(...));
  * </code></pre>
- * <p>
+ *
  * Note: As UDP packets are out-of-order, you should make sure the encoded message size are not greater than
  * the max safe packet size in your particular network path which guarantees no packet fragmentation.
  *
@@ -55,7 +55,7 @@ public class DatagramPacketEncoder<M> extends MessageToMessageEncoder<AddressedE
      * @param encoder the specified message encoder
      */
     public DatagramPacketEncoder(MessageToMessageEncoder<? super M> encoder) {
-        this.encoder = checkNotNull(encoder, "encoder");
+        this.encoder = requireNonNull(encoder, "encoder");
     }
 
     @Override
@@ -64,7 +64,7 @@ public class DatagramPacketEncoder<M> extends MessageToMessageEncoder<AddressedE
             @SuppressWarnings("rawtypes")
             AddressedEnvelope envelope = (AddressedEnvelope) msg;
             return encoder.acceptOutboundMessage(envelope.content())
-                    && (envelope.sender() instanceof InetSocketAddress || envelope.sender() == null)
+                    && envelope.sender() instanceof InetSocketAddress
                     && envelope.recipient() instanceof InetSocketAddress;
         }
         return false;
@@ -135,11 +135,6 @@ public class DatagramPacketEncoder<M> extends MessageToMessageEncoder<AddressedE
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
         encoder.handlerRemoved(ctx);
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        encoder.exceptionCaught(ctx, cause);
     }
 
     @Override

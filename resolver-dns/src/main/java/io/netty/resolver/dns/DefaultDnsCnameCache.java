@@ -17,14 +17,18 @@ package io.netty.resolver.dns;
 
 import io.netty.channel.EventLoop;
 import io.netty.util.AsciiString;
+import io.netty.util.internal.UnstableApi;
 
 import java.util.List;
 
-import static io.netty.util.internal.ObjectUtil.*;
+import static io.netty.util.internal.ObjectUtil.checkPositive;
+import static io.netty.util.internal.ObjectUtil.checkPositiveOrZero;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Default implementation of a {@link DnsCnameCache}.
  */
+@UnstableApi
 public final class DefaultDnsCnameCache implements DnsCnameCache {
     private final int minTtl;
     private final int maxTtl;
@@ -67,7 +71,8 @@ public final class DefaultDnsCnameCache implements DnsCnameCache {
     @SuppressWarnings("unchecked")
     @Override
     public String get(String hostname) {
-        List<? extends String> cached =  cache.get(checkNotNull(hostname, "hostname"));
+        requireNonNull(hostname, "hostname");
+        List<? extends String> cached =  cache.get(hostname);
         if (cached == null || cached.isEmpty()) {
             return null;
         }
@@ -77,9 +82,9 @@ public final class DefaultDnsCnameCache implements DnsCnameCache {
 
     @Override
     public void cache(String hostname, String cname, long originalTtl, EventLoop loop) {
-        checkNotNull(hostname, "hostname");
-        checkNotNull(cname, "cname");
-        checkNotNull(loop, "loop");
+        requireNonNull(hostname, "hostname");
+        requireNonNull(cname, "cname");
+        requireNonNull(loop, "loop");
         cache.cache(hostname, cname, Math.max(minTtl, (int) Math.min(maxTtl, originalTtl)), loop);
     }
 
@@ -90,6 +95,7 @@ public final class DefaultDnsCnameCache implements DnsCnameCache {
 
     @Override
     public boolean clear(String hostname) {
-        return cache.clear(checkNotNull(hostname, "hostname"));
+        requireNonNull(hostname, "hostname");
+        return cache.clear(hostname);
     }
 }

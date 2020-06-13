@@ -31,6 +31,7 @@ import io.netty.util.internal.ObjectUtil;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.xxhash.XXHashFactory;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +50,8 @@ import static io.netty.handler.codec.compression.Lz4Constants.MAGIC_NUMBER;
 import static io.netty.handler.codec.compression.Lz4Constants.MAX_BLOCK_SIZE;
 import static io.netty.handler.codec.compression.Lz4Constants.MIN_BLOCK_SIZE;
 import static io.netty.handler.codec.compression.Lz4Constants.TOKEN_OFFSET;
+import static io.netty.util.internal.ThrowableUtil.unknownStackTrace;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Compresses a {@link ByteBuf} using the LZ4 format.
@@ -67,6 +70,9 @@ import static io.netty.handler.codec.compression.Lz4Constants.TOKEN_OFFSET;
  *  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *     * * * * * * * * * *
  */
 public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
+    private static final EncoderException ENCODE_FINSHED_EXCEPTION = unknownStackTrace(new EncoderException(
+                    new IllegalStateException("encode finished and not enough space to write remaining data")),
+                    Lz4FrameEncoder.class, "encode");
     static final int DEFAULT_MAX_ENCODE_SIZE = Integer.MAX_VALUE;
 
     private final int blockSize;
@@ -124,7 +130,8 @@ public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
      *                        and is slower but compresses more efficiently
      */
     public Lz4FrameEncoder(boolean highCompressor) {
-        this(LZ4Factory.fastestInstance(), highCompressor, DEFAULT_BLOCK_SIZE, new Lz4XXHash32(DEFAULT_SEED));
+        this(LZ4Factory.fastestInstance(), highCompressor, DEFAULT_BLOCK_SIZE,
+                XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED).asChecksum());
     }
 
     /**
@@ -158,8 +165,8 @@ public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
          */
     public Lz4FrameEncoder(LZ4Factory factory, boolean highCompressor, int blockSize,
                            Checksum checksum, int maxEncodeSize) {
-        ObjectUtil.checkNotNull(factory, "factory");
-        ObjectUtil.checkNotNull(checksum, "checksum");
+        requireNonNull(factory, "factory");
+        requireNonNull(checksum, "checksum");
 
         compressor = highCompressor ? factory.highCompressor() : factory.fastCompressor();
         this.checksum = ByteBufChecksum.wrapChecksum(checksum);
@@ -236,7 +243,7 @@ public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
         if (finished) {
             if (!out.isWritable(in.readableBytes())) {
                 // out should be EMPTY_BUFFER because we should have allocated enough space above in allocateBuffer.
-                throw new IllegalStateException("encode finished and not enough space to write remaining data");
+                throw ENCODE_FINSHED_EXCEPTION;
             }
             out.writeBytes(in);
             return;
@@ -354,12 +361,9 @@ public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
         if (executor.inEventLoop()) {
             return finishEncode(ctx, promise);
         } else {
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    ChannelFuture f = finishEncode(ctx(), promise);
-                    f.addListener(new ChannelPromiseNotifier(promise));
-                }
+            executor.execute(() -> {
+                ChannelFuture f = finishEncode(ctx(), promise);
+                f.addListener(new ChannelPromiseNotifier(promise));
             });
             return promise;
         }
@@ -368,20 +372,12 @@ public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
     @Override
     public void close(final ChannelHandlerContext ctx, final ChannelPromise promise) throws Exception {
         ChannelFuture f = finishEncode(ctx, ctx.newPromise());
-        f.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture f) throws Exception {
-                ctx.close(promise);
-            }
-        });
+        f.addListener((ChannelFutureListener) f1 -> ctx.close(promise));
 
         if (!f.isDone()) {
             // Ensure the channel is closed even if the write operation completes in time.
-            ctx.executor().schedule(new Runnable() {
-                @Override
-                public void run() {
-                    ctx.close(promise);
-                }
+            ctx.executor().schedule(() -> {
+                ctx.close(promise);
             }, 10, TimeUnit.SECONDS); // FIXME: Magic number
         }
     }

@@ -20,23 +20,19 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.channels.Channels;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -107,41 +103,6 @@ public class ChunkedWriteHandlerTest {
     }
 
     @Test
-    public void testChunkedNioFileLeftPositionUnchanged() throws IOException {
-        FileChannel in = null;
-        final long expectedPosition = 10;
-        try {
-            in = new RandomAccessFile(TMP, "r").getChannel();
-            in.position(expectedPosition);
-            check(new ChunkedNioFile(in) {
-                @Override
-                public void close() throws Exception {
-                    //no op
-                }
-            });
-            Assert.assertTrue(in.isOpen());
-            Assert.assertEquals(expectedPosition, in.position());
-        } finally {
-            if (in != null) {
-                in.close();
-            }
-        }
-    }
-
-    @Test(expected = ClosedChannelException.class)
-    public void testChunkedNioFileFailOnClosedFileChannel() throws IOException {
-        final FileChannel in = new RandomAccessFile(TMP, "r").getChannel();
-        in.close();
-        check(new ChunkedNioFile(in) {
-            @Override
-            public void close() throws Exception {
-                //no op
-            }
-        });
-        Assert.fail();
-    }
-
-    @Test
     public void testUnchunkedData() throws IOException {
         check(Unpooled.wrappedBuffer(BYTES));
 
@@ -195,13 +156,7 @@ public class ChunkedWriteHandlerTest {
         };
 
         final AtomicBoolean listenerNotified = new AtomicBoolean(false);
-        final ChannelFutureListener listener = new ChannelFutureListener() {
-
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                listenerNotified.set(true);
-            }
-        };
+        final ChannelFutureListener listener = future -> listenerNotified.set(true);
 
         EmbeddedChannel ch = new EmbeddedChannel(new ChunkedWriteHandler());
         ch.writeAndFlush(input).addListener(listener).syncUninterruptibly();
@@ -264,7 +219,7 @@ public class ChunkedWriteHandlerTest {
         ch.writeAndFlush(input).syncUninterruptibly();
         assertTrue(ch.finish());
 
-        assertEquals(0, ch.readOutbound());
+        assertEquals(0, (int) ch.readOutbound());
         assertNull(ch.readOutbound());
     }
 
@@ -318,7 +273,7 @@ public class ChunkedWriteHandlerTest {
     // See https://github.com/netty/netty/issues/8700.
     @Test
     public void testFailureWhenLastChunkFailed() throws IOException {
-        ChannelOutboundHandlerAdapter failLast = new ChannelOutboundHandlerAdapter() {
+        ChannelHandler failLast = new ChannelHandler() {
             private int passedWrites;
 
             @Override
@@ -454,7 +409,7 @@ public class ChunkedWriteHandlerTest {
             }
         };
 
-        ChannelOutboundHandlerAdapter noOpWrites = new ChannelOutboundHandlerAdapter() {
+        ChannelHandler noOpWrites = new ChannelHandler() {
             @Override
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
                 ReferenceCountUtil.release(msg);
@@ -640,7 +595,7 @@ public class ChunkedWriteHandlerTest {
     }
 
     private static void checkFirstFailed(Object input) {
-        ChannelOutboundHandlerAdapter noOpWrites = new ChannelOutboundHandlerAdapter() {
+        ChannelHandler noOpWrites = new ChannelHandler() {
             @Override
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
                 ReferenceCountUtil.release(msg);
@@ -657,7 +612,7 @@ public class ChunkedWriteHandlerTest {
     }
 
     private static void checkSkipFailed(Object input1, Object input2) {
-        ChannelOutboundHandlerAdapter failFirst = new ChannelOutboundHandlerAdapter() {
+        ChannelHandler failFirst = new ChannelHandler() {
             private boolean alreadyFailed;
 
             @Override

@@ -172,7 +172,7 @@ public class DefaultHeadersTest {
         headers.add(of("name"), of("value1"));
         assertEquals(1, headers.size());
 
-        List<CharSequence> values = new ArrayList<CharSequence>();
+        List<CharSequence> values = new ArrayList<>();
         Iterator<CharSequence> itr = headers.valueIterator(of("name"));
         while (itr.hasNext()) {
             values.add(itr.next());
@@ -194,7 +194,7 @@ public class DefaultHeadersTest {
     public void multipleValuesPerNameIteratorEmpty() {
         TestDefaultHeaders headers = newInstance();
 
-        List<CharSequence> values = new ArrayList<CharSequence>();
+        List<CharSequence> values = new ArrayList<>();
         Iterator<CharSequence> itr = headers.valueIterator(of("name"));
         while (itr.hasNext()) {
             values.add(itr.next());

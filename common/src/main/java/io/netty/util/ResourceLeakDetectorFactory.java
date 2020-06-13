@@ -16,13 +16,16 @@
 
 package io.netty.util;
 
-import io.netty.util.internal.ObjectUtil;
+import static java.util.Objects.requireNonNull;
+
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 import java.lang.reflect.Constructor;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 /**
  * This static factory should be used to load {@link ResourceLeakDetector}s as needed
@@ -49,7 +52,7 @@ public abstract class ResourceLeakDetectorFactory {
      * @param factory the instance that will become the current {@link ResourceLeakDetectorFactory}'s singleton
      */
     public static void setResourceLeakDetectorFactory(ResourceLeakDetectorFactory factory) {
-        factoryInstance = ObjectUtil.checkNotNull(factory, "factory");
+        factoryInstance = requireNonNull(factory, "factory");
     }
 
     /**
@@ -101,7 +104,8 @@ public abstract class ResourceLeakDetectorFactory {
         DefaultResourceLeakDetectorFactory() {
             String customLeakDetector;
             try {
-                customLeakDetector = SystemPropertyUtil.get("io.netty.customResourceLeakDetector");
+                customLeakDetector = AccessController.doPrivileged((PrivilegedAction<String>) () ->
+                        SystemPropertyUtil.get("io.netty.customResourceLeakDetector"));
             } catch (Throwable cause) {
                 logger.error("Could not access System property: io.netty.customResourceLeakDetector", cause);
                 customLeakDetector = null;
@@ -168,8 +172,8 @@ public abstract class ResourceLeakDetectorFactory {
                 }
             }
 
-            ResourceLeakDetector<T> resourceLeakDetector = new ResourceLeakDetector<T>(resource, samplingInterval,
-                                                                                       maxActive);
+            ResourceLeakDetector<T> resourceLeakDetector = new ResourceLeakDetector<>(resource, samplingInterval,
+                    maxActive);
             logger.debug("Loaded default ResourceLeakDetector: {}", resourceLeakDetector);
             return resourceLeakDetector;
         }
@@ -191,7 +195,7 @@ public abstract class ResourceLeakDetectorFactory {
                 }
             }
 
-            ResourceLeakDetector<T> resourceLeakDetector = new ResourceLeakDetector<T>(resource, samplingInterval);
+            ResourceLeakDetector<T> resourceLeakDetector = new ResourceLeakDetector<>(resource, samplingInterval);
             logger.debug("Loaded default ResourceLeakDetector: {}", resourceLeakDetector);
             return resourceLeakDetector;
         }

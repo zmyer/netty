@@ -25,11 +25,12 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
-import io.netty.channel.DefaultEventLoopGroup;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.MultithreadEventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.local.LocalAddress;
 import io.netty.channel.local.LocalChannel;
+import io.netty.channel.local.LocalHandler;
 import io.netty.channel.local.LocalServerChannel;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
@@ -65,7 +66,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.netty.handler.ssl.OpenSslTestUtils.checkShouldUseKeyManagerFactory;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -89,15 +89,13 @@ public class OpenSslPrivateKeyMethodTest {
 
     @BeforeClass
     public static void init() throws Exception {
-        checkShouldUseKeyManagerFactory();
-
         Assume.assumeTrue(OpenSsl.isBoringSSL());
         // Check if the cipher is supported at all which may not be the case for various JDK versions and OpenSSL API
         // implementations.
         assumeCipherAvailable(SslProvider.OPENSSL);
         assumeCipherAvailable(SslProvider.JDK);
 
-        GROUP = new DefaultEventLoopGroup();
+        GROUP = new MultithreadEventLoopGroup(LocalHandler.newFactory());
         CERT = new SelfSignedCertificate();
         EXECUTOR = Executors.newCachedThreadPool(new ThreadFactory() {
             @Override
@@ -316,22 +314,11 @@ public class OpenSslPrivateKeyMethodTest {
     }
 
     @Test
-    public void testPrivateKeyMethodFailsBecauseOfException() throws Exception {
-        testPrivateKeyMethodFails(false);
-    }
-
-    @Test
-    public void testPrivateKeyMethodFailsBecauseOfNull() throws Exception {
-        testPrivateKeyMethodFails(true);
-    }
-    private void testPrivateKeyMethodFails(final boolean returnNull) throws Exception {
+    public void testPrivateKeyMethodFails() throws Exception {
         final SslContext sslServerContext = buildServerContext(new OpenSslPrivateKeyMethod() {
             @Override
             public byte[] sign(SSLEngine engine, int signatureAlgorithm, byte[] input) throws Exception {
                 assertThread();
-                if (returnNull) {
-                    return null;
-                }
                 throw new SignatureException();
             }
 

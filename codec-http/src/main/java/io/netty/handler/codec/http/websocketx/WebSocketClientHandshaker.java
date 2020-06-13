@@ -15,6 +15,8 @@
  */
 package io.netty.handler.codec.http.websocketx;
 
+import static java.util.Objects.requireNonNull;
+
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -35,7 +37,7 @@ import io.netty.handler.codec.http.HttpResponseDecoder;
 import io.netty.handler.codec.http.HttpScheme;
 import io.netty.util.NetUtil;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.internal.ObjectUtil;
+import io.netty.util.internal.ThrowableUtil;
 
 import java.net.URI;
 import java.nio.channels.ClosedChannelException;
@@ -48,6 +50,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * Base class for web socket client handshake implementations
  */
 public abstract class WebSocketClientHandshaker {
+    private static final ClosedChannelException CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(
+            new ClosedChannelException(), WebSocketClientHandshaker.class, "processHandshake(...)");
 
     private static final String HTTP_SCHEME_PREFIX = HttpScheme.HTTP + "://";
     private static final String HTTPS_SCHEME_PREFIX = HttpScheme.HTTPS + "://";
@@ -75,8 +79,6 @@ public abstract class WebSocketClientHandshaker {
     protected final HttpHeaders customHeaders;
 
     private final int maxFramePayloadLength;
-
-    private final boolean absoluteUpgradeUrl;
 
     /**
      * Base constructor
@@ -118,39 +120,12 @@ public abstract class WebSocketClientHandshaker {
     protected WebSocketClientHandshaker(URI uri, WebSocketVersion version, String subprotocol,
                                         HttpHeaders customHeaders, int maxFramePayloadLength,
                                         long forceCloseTimeoutMillis) {
-        this(uri, version, subprotocol, customHeaders, maxFramePayloadLength, forceCloseTimeoutMillis, false);
-    }
-
-    /**
-     * Base constructor
-     *
-     * @param uri
-     *            URL for web socket communications. e.g "ws://myhost.com/mypath". Subsequent web socket frames will be
-     *            sent to this URL.
-     * @param version
-     *            Version of web socket specification to use to connect to the server
-     * @param subprotocol
-     *            Sub protocol request sent to the server.
-     * @param customHeaders
-     *            Map of custom headers to add to the client request
-     * @param maxFramePayloadLength
-     *            Maximum length of a frame's payload
-     * @param forceCloseTimeoutMillis
-     *            Close the connection if it was not closed by the server after timeout specified
-     * @param  absoluteUpgradeUrl
-     *            Use an absolute url for the Upgrade request, typically when connecting through an HTTP proxy over
-     *            clear HTTP
-     */
-    protected WebSocketClientHandshaker(URI uri, WebSocketVersion version, String subprotocol,
-                                        HttpHeaders customHeaders, int maxFramePayloadLength,
-                                        long forceCloseTimeoutMillis, boolean absoluteUpgradeUrl) {
         this.uri = uri;
         this.version = version;
         expectedSubprotocol = subprotocol;
         this.customHeaders = customHeaders;
         this.maxFramePayloadLength = maxFramePayloadLength;
         this.forceCloseTimeoutMillis = forceCloseTimeoutMillis;
-        this.absoluteUpgradeUrl = absoluteUpgradeUrl;
     }
 
     /**
@@ -234,7 +209,7 @@ public abstract class WebSocketClientHandshaker {
      *            Channel
      */
     public ChannelFuture handshake(Channel channel) {
-        ObjectUtil.checkNotNull(channel, "channel");
+        requireNonNull(channel, "channel");
         return handshake(channel, channel.newPromise());
     }
 
@@ -247,39 +222,35 @@ public abstract class WebSocketClientHandshaker {
      *            the {@link ChannelPromise} to be notified when the opening handshake is sent
      */
     public final ChannelFuture handshake(Channel channel, final ChannelPromise promise) {
-        ChannelPipeline pipeline = channel.pipeline();
-        HttpResponseDecoder decoder = pipeline.get(HttpResponseDecoder.class);
+        FullHttpRequest request =  newHandshakeRequest();
+
+        HttpResponseDecoder decoder = channel.pipeline().get(HttpResponseDecoder.class);
         if (decoder == null) {
-            HttpClientCodec codec = pipeline.get(HttpClientCodec.class);
+            HttpClientCodec codec = channel.pipeline().get(HttpClientCodec.class);
             if (codec == null) {
                promise.setFailure(new IllegalStateException("ChannelPipeline does not contain " +
-                       "an HttpResponseDecoder or HttpClientCodec"));
+                       "a HttpResponseDecoder or HttpClientCodec"));
                return promise;
             }
         }
 
-        FullHttpRequest request = newHandshakeRequest();
-
-        channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) {
-                if (future.isSuccess()) {
-                    ChannelPipeline p = future.channel().pipeline();
-                    ChannelHandlerContext ctx = p.context(HttpRequestEncoder.class);
-                    if (ctx == null) {
-                        ctx = p.context(HttpClientCodec.class);
-                    }
-                    if (ctx == null) {
-                        promise.setFailure(new IllegalStateException("ChannelPipeline does not contain " +
-                                "an HttpRequestEncoder or HttpClientCodec"));
-                        return;
-                    }
-                    p.addAfter(ctx.name(), "ws-encoder", newWebSocketEncoder());
-
-                    promise.setSuccess();
-                } else {
-                    promise.setFailure(future.cause());
+        channel.writeAndFlush(request).addListener((ChannelFutureListener) future -> {
+            if (future.isSuccess()) {
+                ChannelPipeline p = future.channel().pipeline();
+                ChannelHandlerContext ctx = p.context(HttpRequestEncoder.class);
+                if (ctx == null) {
+                    ctx = p.context(HttpClientCodec.class);
                 }
+                if (ctx == null) {
+                    promise.setFailure(new IllegalStateException("ChannelPipeline does not contain " +
+                            "a HttpRequestEncoder or HttpClientCodec"));
+                    return;
+                }
+                p.addAfter(ctx.name(), "ws-encoder", newWebSocketEncoder());
+
+                promise.setSuccess();
+            } else {
+                promise.setFailure(future.cause());
             }
         });
         return promise;
@@ -349,7 +320,7 @@ public abstract class WebSocketClientHandshaker {
             ctx = p.context(HttpClientCodec.class);
             if (ctx == null) {
                 throw new IllegalStateException("ChannelPipeline does not contain " +
-                        "an HttpRequestEncoder or HttpClientCodec");
+                        "a HttpRequestEncoder or HttpClientCodec");
             }
             final HttpClientCodec codec =  (HttpClientCodec) ctx.handler();
             // Remove the encoder part of the codec as the user may start writing frames after this method returns.
@@ -360,12 +331,7 @@ public abstract class WebSocketClientHandshaker {
             // Delay the removal of the decoder so the user can setup the pipeline if needed to handle
             // WebSocketFrame messages.
             // See https://github.com/netty/netty/issues/4533
-            channel.eventLoop().execute(new Runnable() {
-                @Override
-                public void run() {
-                    p.remove(codec);
-                }
-            });
+            channel.eventLoop().execute(() -> p.remove(codec));
         } else {
             if (p.get(HttpRequestEncoder.class) != null) {
                 // Remove the encoder part of the codec as the user may start writing frames after this method returns.
@@ -377,12 +343,7 @@ public abstract class WebSocketClientHandshaker {
             // Delay the removal of the decoder so the user can setup the pipeline if needed to handle
             // WebSocketFrame messages.
             // See https://github.com/netty/netty/issues/4533
-            channel.eventLoop().execute(new Runnable() {
-                @Override
-                public void run() {
-                    p.remove(context.handler());
-                }
-            });
+            channel.eventLoop().execute(() -> p.remove(context.handler()));
         }
     }
 
@@ -428,7 +389,7 @@ public abstract class WebSocketClientHandshaker {
                 ctx = p.context(HttpClientCodec.class);
                 if (ctx == null) {
                     return promise.setFailure(new IllegalStateException("ChannelPipeline does not contain " +
-                            "an HttpResponseDecoder or HttpClientCodec"));
+                            "a HttpResponseDecoder or HttpClientCodec"));
                 }
             }
             // Add aggregator and ensure we feed the HttpResponse so it is aggregated. A limit of 8192 should be more
@@ -460,9 +421,7 @@ public abstract class WebSocketClientHandshaker {
                 @Override
                 public void channelInactive(ChannelHandlerContext ctx) throws Exception {
                     // Fail promise if Channel was closed
-                    if (!promise.isDone()) {
-                        promise.tryFailure(new ClosedChannelException());
-                    }
+                    promise.tryFailure(CLOSED_CHANNEL_EXCEPTION);
                     ctx.fireChannelInactive();
                 }
             });
@@ -499,7 +458,7 @@ public abstract class WebSocketClientHandshaker {
      *            Closing Frame that was received
      */
     public ChannelFuture close(Channel channel, CloseWebSocketFrame frame) {
-        ObjectUtil.checkNotNull(channel, "channel");
+        requireNonNull(channel, "channel");
         return close(channel, frame, channel.newPromise());
     }
 
@@ -514,7 +473,8 @@ public abstract class WebSocketClientHandshaker {
      *            the {@link ChannelPromise} to be notified when the closing handshake is done
      */
     public ChannelFuture close(Channel channel, CloseWebSocketFrame frame, ChannelPromise promise) {
-        ObjectUtil.checkNotNull(channel, "channel");
+        requireNonNull(channel, "channel");
+
         channel.writeAndFlush(frame, promise);
         applyForceCloseTimeout(channel, promise);
         return promise;
@@ -527,32 +487,23 @@ public abstract class WebSocketClientHandshaker {
             return;
         }
 
-        flushFuture.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                // If flush operation failed, there is no reason to expect
-                // a server to receive CloseFrame. Thus this should be handled
-                // by the application separately.
-                // Also, close might be called twice from different threads.
-                if (future.isSuccess() && channel.isActive() &&
-                        FORCE_CLOSE_INIT_UPDATER.compareAndSet(handshaker, 0, 1)) {
-                    final Future<?> forceCloseFuture = channel.eventLoop().schedule(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (channel.isActive()) {
-                                channel.close();
-                                forceCloseComplete = true;
-                            }
-                        }
-                    }, forceCloseTimeoutMillis, TimeUnit.MILLISECONDS);
+        flushFuture.addListener(future -> {
+            // If flush operation failed, there is no reason to expect
+            // a server to receive CloseFrame. Thus this should be handled
+            // by the application separately.
+            // Also, close might be called twice from different threads.
+            if (future.isSuccess() && channel.isActive() &&
+                    FORCE_CLOSE_INIT_UPDATER.compareAndSet(handshaker, 0, 1)) {
+                final Future<?> forceCloseFuture = channel.eventLoop().schedule(() -> {
+                    if (channel.isActive()) {
+                        channel.close();
+                        forceCloseComplete = true;
+                    }
+                }, forceCloseTimeoutMillis, TimeUnit.MILLISECONDS);
 
-                    channel.closeFuture().addListener(new ChannelFutureListener() {
-                        @Override
-                        public void operationComplete(ChannelFuture future) throws Exception {
-                            forceCloseFuture.cancel(false);
-                        }
-                    });
-                }
+                channel.closeFuture().addListener(ignore -> {
+                    forceCloseFuture.cancel(false);
+                });
             }
         });
     }
@@ -560,15 +511,14 @@ public abstract class WebSocketClientHandshaker {
     /**
      * Return the constructed raw path for the give {@link URI}.
      */
-    protected String upgradeUrl(URI wsURL) {
-        if (absoluteUpgradeUrl) {
-            return wsURL.toString();
+    static String rawPath(URI wsURL) {
+        String path = wsURL.getRawPath();
+        String query = wsURL.getRawQuery();
+        if (query != null && !query.isEmpty()) {
+            path = path + '?' + query;
         }
 
-        String path = wsURL.getRawPath();
-        path = path == null || path.isEmpty() ? "/" : path;
-        String query = wsURL.getRawQuery();
-        return query != null && !query.isEmpty() ? path + '?' + query : path;
+        return path == null || path.isEmpty() ? "/" : path;
     }
 
     static CharSequence websocketHostValue(URI wsURL) {
@@ -577,15 +527,14 @@ public abstract class WebSocketClientHandshaker {
             return wsURL.getHost();
         }
         String host = wsURL.getHost();
-        String scheme = wsURL.getScheme();
         if (port == HttpScheme.HTTP.port()) {
-            return HttpScheme.HTTP.name().contentEquals(scheme)
-                    || WebSocketScheme.WS.name().contentEquals(scheme) ?
+            return HttpScheme.HTTP.name().contentEquals(wsURL.getScheme())
+                    || WebSocketScheme.WS.name().contentEquals(wsURL.getScheme()) ?
                     host : NetUtil.toSocketAddressString(host, port);
         }
         if (port == HttpScheme.HTTPS.port()) {
-            return HttpScheme.HTTPS.name().contentEquals(scheme)
-                    || WebSocketScheme.WSS.name().contentEquals(scheme) ?
+            return HttpScheme.HTTPS.name().contentEquals(wsURL.getScheme())
+                    || WebSocketScheme.WSS.name().contentEquals(wsURL.getScheme()) ?
                     host : NetUtil.toSocketAddressString(host, port);
         }
 

@@ -16,15 +16,14 @@
 
 package io.netty.channel;
 
-import io.netty.channel.ChannelHandlerMask.Skip;
 import io.netty.util.internal.InternalThreadLocalMap;
 
+import java.lang.reflect.AnnotatedType;
 import java.util.Map;
 
 /**
  * Skeleton implementation of a {@link ChannelHandler}.
  */
-//FGTODO: 2019/10/31 下午7:18 zmyer
 public abstract class ChannelHandlerAdapter implements ChannelHandler {
 
     // Not using volatile because it's used only for a sanity check.
@@ -57,39 +56,12 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
         Boolean sharable = cache.get(clazz);
         if (sharable == null) {
             sharable = clazz.isAnnotationPresent(Sharable.class);
+            if (!sharable) {
+                AnnotatedType annotatedType = clazz.getAnnotatedSuperclass();
+                sharable = annotatedType.isAnnotationPresent(Sharable.class);
+            }
             cache.put(clazz, sharable);
         }
         return sharable;
-    }
-
-    /**
-     * Do nothing by default, sub-classes may override this method.
-     */
-    @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        // NOOP
-    }
-
-    /**
-     * Do nothing by default, sub-classes may override this method.
-     */
-    @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        // NOOP
-    }
-
-    /**
-     * Calls {@link ChannelHandlerContext#fireExceptionCaught(Throwable)} to forward
-     * to the next {@link ChannelHandler} in the {@link ChannelPipeline}.
-     * <p>
-     * Sub-classes may override this method to change behavior.
-     *
-     * @deprecated is part of {@link ChannelInboundHandler}
-     */
-    @Skip
-    @Override
-    @Deprecated
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        ctx.fireExceptionCaught(cause);
     }
 }

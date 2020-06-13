@@ -16,6 +16,8 @@
 
 package io.netty.handler.codec.socksx.v5;
 
+import static java.util.Objects.requireNonNull;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.DecoderException;
@@ -23,7 +25,6 @@ import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.ReplayingDecoder;
 import io.netty.handler.codec.socksx.SocksVersion;
 import io.netty.handler.codec.socksx.v5.Socks5CommandResponseDecoder.State;
-import io.netty.util.internal.ObjectUtil;
 
 import java.util.List;
 
@@ -49,7 +50,9 @@ public class Socks5CommandResponseDecoder extends ReplayingDecoder<State> {
 
     public Socks5CommandResponseDecoder(Socks5AddressDecoder addressDecoder) {
         super(State.INIT);
-        this.addressDecoder = ObjectUtil.checkNotNull(addressDecoder, "addressDecoder");
+        requireNonNull(addressDecoder, "addressDecoder");
+
+        this.addressDecoder = addressDecoder;
     }
 
     @Override

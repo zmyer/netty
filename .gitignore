@@ -41,7 +41,3 @@ mainframer
 # exclude docker-sync stuff
 .docker-sync
 */.docker-sync
-
-# exclude vscode files
-.vscode/
-*.factorypath

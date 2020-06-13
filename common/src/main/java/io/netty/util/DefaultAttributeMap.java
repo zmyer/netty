@@ -15,7 +15,7 @@
  */
 package io.netty.util;
 
-import io.netty.util.internal.ObjectUtil;
+import static java.util.Objects.requireNonNull;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Default {@link AttributeMap} implementation which use simple synchronization per bucket to keep the memory overhead
  * as low as possible.
  */
-//FGTODO: 2019/11/1 下午2:45 zmyer
 public class DefaultAttributeMap implements AttributeMap {
 
     @SuppressWarnings("rawtypes")
@@ -33,7 +32,7 @@ public class DefaultAttributeMap implements AttributeMap {
             AtomicReferenceFieldUpdater.newUpdater(DefaultAttributeMap.class, AtomicReferenceArray.class, "attributes");
 
     private static final int BUCKET_SIZE = 4;
-    private static final int MASK = BUCKET_SIZE - 1;
+    private static final int MASK = BUCKET_SIZE  - 1;
 
     // Initialize lazily to reduce memory consumption; updated by AtomicReferenceFieldUpdater above.
     @SuppressWarnings("UnusedDeclaration")
@@ -42,11 +41,11 @@ public class DefaultAttributeMap implements AttributeMap {
     @SuppressWarnings("unchecked")
     @Override
     public <T> Attribute<T> attr(AttributeKey<T> key) {
-        ObjectUtil.checkNotNull(key, "key");
+        requireNonNull(key, "key");
         AtomicReferenceArray<DefaultAttribute<?>> attributes = this.attributes;
         if (attributes == null) {
             // Not using ConcurrentHashMap due to high memory consumption.
-            attributes = new AtomicReferenceArray<DefaultAttribute<?>>(BUCKET_SIZE);
+            attributes = new AtomicReferenceArray<>(BUCKET_SIZE);
 
             if (!updater.compareAndSet(this, null, attributes)) {
                 attributes = this.attributes;
@@ -59,7 +58,7 @@ public class DefaultAttributeMap implements AttributeMap {
             // No head exists yet which means we may be able to add the attribute without synchronization and just
             // use compare and set. At worst we need to fallback to synchronization and waste two allocations.
             head = new DefaultAttribute();
-            DefaultAttribute<T> attr = new DefaultAttribute<T>(head, key);
+            DefaultAttribute<T> attr = new DefaultAttribute<>(head, key);
             head.next = attr;
             attr.prev = head;
             if (attributes.compareAndSet(i, null, head)) {
@@ -72,10 +71,10 @@ public class DefaultAttributeMap implements AttributeMap {
 
         synchronized (head) {
             DefaultAttribute<?> curr = head;
-            for (; ; ) {
+            for (;;) {
                 DefaultAttribute<?> next = curr.next;
                 if (next == null) {
-                    DefaultAttribute<T> attr = new DefaultAttribute<T>(head, key);
+                    DefaultAttribute<T> attr = new DefaultAttribute<>(head, key);
                     curr.next = attr;
                     attr.prev = curr;
                     return attr;
@@ -91,7 +90,7 @@ public class DefaultAttributeMap implements AttributeMap {
 
     @Override
     public <T> boolean hasAttr(AttributeKey<T> key) {
-        ObjectUtil.checkNotNull(key, "key");
+        requireNonNull(key, "key");
         AtomicReferenceArray<DefaultAttribute<?>> attributes = this.attributes;
         if (attributes == null) {
             // no attribute exists

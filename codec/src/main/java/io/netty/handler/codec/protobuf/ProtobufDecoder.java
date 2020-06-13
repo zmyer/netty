@@ -15,6 +15,8 @@
  */
 package io.netty.handler.codec.protobuf;
 
+import static java.util.Objects.requireNonNull;
+
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.ExtensionRegistryLite;
 import com.google.protobuf.Message;
@@ -28,7 +30,6 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.codec.MessageToMessageDecoder;
-import io.netty.util.internal.ObjectUtil;
 
 import java.util.List;
 
@@ -96,13 +97,13 @@ public class ProtobufDecoder extends MessageToMessageDecoder<ByteBuf> {
     }
 
     public ProtobufDecoder(MessageLite prototype, ExtensionRegistryLite extensionRegistry) {
-        this.prototype = ObjectUtil.checkNotNull(prototype, "prototype").getDefaultInstanceForType();
+        requireNonNull(prototype, "prototype");
+        this.prototype = prototype.getDefaultInstanceForType();
         this.extensionRegistry = extensionRegistry;
     }
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out)
-            throws Exception {
+    protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
         final byte[] array;
         final int offset;
         final int length = msg.readableBytes();

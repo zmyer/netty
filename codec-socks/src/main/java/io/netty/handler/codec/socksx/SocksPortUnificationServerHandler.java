@@ -16,6 +16,8 @@
 
 package io.netty.handler.codec.socksx;
 
+import static java.util.Objects.requireNonNull;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
@@ -25,7 +27,6 @@ import io.netty.handler.codec.socksx.v4.Socks4ServerEncoder;
 import io.netty.handler.codec.socksx.v5.Socks5AddressEncoder;
 import io.netty.handler.codec.socksx.v5.Socks5InitialRequestDecoder;
 import io.netty.handler.codec.socksx.v5.Socks5ServerEncoder;
-import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -54,7 +55,9 @@ public class SocksPortUnificationServerHandler extends ByteToMessageDecoder {
      * This constructor is useful when a user wants to use an alternative {@link Socks5AddressEncoder}.
      */
     public SocksPortUnificationServerHandler(Socks5ServerEncoder socks5encoder) {
-        this.socks5encoder = ObjectUtil.checkNotNull(socks5encoder, "socks5encoder");
+        requireNonNull(socks5encoder, "socks5encoder");
+
+        this.socks5encoder = socks5encoder;
     }
 
     @Override

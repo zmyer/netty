@@ -15,7 +15,6 @@
  */
 package io.netty.util;
 
-import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -35,6 +34,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.netty.util.internal.StringUtil.simpleClassName;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A {@link Timer} optimized for approximated I/O timeout scheduling.
@@ -242,11 +242,14 @@ public class HashedWheelTimer implements Timer {
             ThreadFactory threadFactory,
             long tickDuration, TimeUnit unit, int ticksPerWheel, boolean leakDetection,
             long maxPendingTimeouts) {
-
-        ObjectUtil.checkNotNull(threadFactory, "threadFactory");
-        ObjectUtil.checkNotNull(unit, "unit");
-        ObjectUtil.checkPositive(tickDuration, "tickDuration");
-        ObjectUtil.checkPositive(ticksPerWheel, "ticksPerWheel");
+        requireNonNull(threadFactory, "threadFactory");
+        requireNonNull(unit, "unit");
+        if (tickDuration <= 0) {
+            throw new IllegalArgumentException("tickDuration must be greater than 0: " + tickDuration);
+        }
+        if (ticksPerWheel <= 0) {
+            throw new IllegalArgumentException("ticksPerWheel must be greater than 0: " + ticksPerWheel);
+        }
 
         // Normalize ticksPerWheel to power of two and initialize the wheel.
         wheel = createWheel(ticksPerWheel);
@@ -263,8 +266,10 @@ public class HashedWheelTimer implements Timer {
         }
 
         if (duration < MILLISECOND_NANOS) {
-            logger.warn("Configured tickDuration {} smaller then {}, using 1ms.",
-                        tickDuration, MILLISECOND_NANOS);
+            if (logger.isWarnEnabled()) {
+                logger.warn("Configured tickDuration %d smaller then %d, using 1ms.",
+                            tickDuration, MILLISECOND_NANOS);
+            }
             this.tickDuration = MILLISECOND_NANOS;
         } else {
             this.tickDuration = duration;
@@ -401,8 +406,8 @@ public class HashedWheelTimer implements Timer {
 
     @Override
     public Timeout newTimeout(TimerTask task, long delay, TimeUnit unit) {
-        ObjectUtil.checkNotNull(task, "task");
-        ObjectUtil.checkNotNull(unit, "unit");
+        requireNonNull(task, "taks");
+        requireNonNull(unit, "unit");
 
         long pendingTimeoutsCount = pendingTimeouts.incrementAndGet();
 
@@ -445,7 +450,7 @@ public class HashedWheelTimer implements Timer {
     }
 
     private final class Worker implements Runnable {
-        private final Set<Timeout> unprocessedTimeouts = new HashSet<Timeout>();
+        private final Set<Timeout> unprocessedTimeouts = new HashSet<>();
 
         private long tick;
 
@@ -560,9 +565,6 @@ public class HashedWheelTimer implements Timer {
                 // See https://github.com/netty/netty/issues/356
                 if (PlatformDependent.isWindows()) {
                     sleepTimeMs = sleepTimeMs / 10 * 10;
-                    if (sleepTimeMs == 0) {
-                        sleepTimeMs = 1;
-                    }
                 }
 
                 try {

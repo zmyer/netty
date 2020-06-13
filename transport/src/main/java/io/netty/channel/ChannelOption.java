@@ -15,10 +15,11 @@
  */
 package io.netty.channel;
 
+import static java.util.Objects.requireNonNull;
+
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.AbstractConstant;
 import io.netty.util.ConstantPool;
-import io.netty.util.internal.ObjectUtil;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -29,15 +30,14 @@ import java.net.NetworkInterface;
  * of {@link ChannelConfig} and may depend on the nature of the transport it belongs
  * to.
  *
- * @param <T> the type of the value which is valid for the {@link ChannelOption}
+ * @param <T>   the type of the value which is valid for the {@link ChannelOption}
  */
-//FGTODO: 2019/11/1 下午1:55 zmyer
 public class ChannelOption<T> extends AbstractConstant<ChannelOption<T>> {
 
     private static final ConstantPool<ChannelOption<Object>> pool = new ConstantPool<ChannelOption<Object>>() {
         @Override
         protected ChannelOption<Object> newConstant(int id, String name) {
-            return new ChannelOption<Object>(id, name);
+            return new ChannelOption<>(id, name);
         }
     };
 
@@ -131,9 +131,6 @@ public class ChannelOption<T> extends AbstractConstant<ChannelOption<T>> {
     public static final ChannelOption<Boolean> DATAGRAM_CHANNEL_ACTIVE_ON_REGISTRATION =
             valueOf("DATAGRAM_CHANNEL_ACTIVE_ON_REGISTRATION");
 
-    public static final ChannelOption<Boolean> SINGLE_EVENTEXECUTOR_PER_GROUP =
-            valueOf("SINGLE_EVENTEXECUTOR_PER_GROUP");
-
     /**
      * Creates a new {@link ChannelOption} with the specified unique {@code name}.
      */
@@ -151,6 +148,6 @@ public class ChannelOption<T> extends AbstractConstant<ChannelOption<T>> {
      * may override this for special checks.
      */
     public void validate(T value) {
-        ObjectUtil.checkNotNull(value, "value");
+        requireNonNull(value, "value");
     }
 }

@@ -18,6 +18,7 @@ package io.netty.resolver.dns;
 import io.netty.util.NetUtil;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.SocketUtils;
+import io.netty.util.internal.UnstableApi;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -36,6 +37,7 @@ import static io.netty.resolver.dns.DnsServerAddresses.sequential;
  * <p>
  * This may use the JDK's blocking DNS resolution to bootstrap the default DNS server addresses.
  */
+@UnstableApi
 public final class DefaultDnsServerAddressStreamProvider implements DnsServerAddressStreamProvider {
     private static final InternalLogger logger =
             InternalLoggerFactory.getInstance(DefaultDnsServerAddressStreamProvider.class);
@@ -46,16 +48,14 @@ public final class DefaultDnsServerAddressStreamProvider implements DnsServerAdd
     static final int DNS_PORT = 53;
 
     static {
-        final List<InetSocketAddress> defaultNameServers = new ArrayList<InetSocketAddress>(2);
+        final List<InetSocketAddress> defaultNameServers = new ArrayList<>(2);
         if (!PlatformDependent.isAndroid()) {
             // Only try to use when not on Android as the classes not exists there:
             // See https://github.com/netty/netty/issues/8654
             DirContextUtils.addNameServers(defaultNameServers, DNS_PORT);
         }
 
-        // Only try when using Java8 and lower as otherwise it will produce:
-        // WARNING: Illegal reflective access by io.netty.resolver.dns.DefaultDnsServerAddressStreamProvider
-        if (PlatformDependent.javaVersion() < 9 && defaultNameServers.isEmpty()) {
+        if (defaultNameServers.isEmpty()) {
             try {
                 Class<?> configClass = Class.forName("sun.net.dns.ResolverConfiguration");
                 Method open = configClass.getMethod("open");

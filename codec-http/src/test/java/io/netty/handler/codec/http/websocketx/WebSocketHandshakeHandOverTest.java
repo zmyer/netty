@@ -45,15 +45,10 @@ public class WebSocketHandshakeHandOverTest {
     private boolean clientReceivedMessage;
     private boolean serverReceivedCloseHandshake;
     private boolean clientForceClosed;
-    private boolean clientHandshakeTimeout;
 
     private final class CloseNoOpServerProtocolHandler extends WebSocketServerProtocolHandler {
         CloseNoOpServerProtocolHandler(String websocketPath) {
-            super(WebSocketServerProtocolConfig.newBuilder()
-                .websocketPath(websocketPath)
-                .allowExtensions(false)
-                .sendCloseFrame(null)
-                .build());
+            super(websocketPath, null, false);
         }
 
         @Override
@@ -74,7 +69,6 @@ public class WebSocketHandshakeHandOverTest {
         clientReceivedMessage = false;
         serverReceivedCloseHandshake = false;
         clientForceClosed = false;
-        clientHandshakeTimeout = false;
     }
 
     @Test
@@ -122,66 +116,6 @@ public class WebSocketHandshakeHandOverTest {
         transferAllDataWithMerge(serverChannel, clientChannel);
         assertTrue(clientReceivedHandshake);
         assertTrue(clientReceivedMessage);
-    }
-
-    @Test(expected = WebSocketHandshakeException.class)
-    public void testClientHandshakeTimeout() throws Exception {
-        EmbeddedChannel serverChannel = createServerChannel(new SimpleChannelInboundHandler<Object>() {
-            @Override
-            public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-                if (evt == ServerHandshakeStateEvent.HANDSHAKE_COMPLETE) {
-                    serverReceivedHandshake = true;
-                    // immediately send a message to the client on connect
-                    ctx.writeAndFlush(new TextWebSocketFrame("abc"));
-                } else if (evt instanceof WebSocketServerProtocolHandler.HandshakeComplete) {
-                    serverHandshakeComplete = (WebSocketServerProtocolHandler.HandshakeComplete) evt;
-                }
-            }
-
-            @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-            }
-        });
-
-        EmbeddedChannel clientChannel = createClientChannel(new SimpleChannelInboundHandler<Object>() {
-            @Override
-            public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-                if (evt == ClientHandshakeStateEvent.HANDSHAKE_COMPLETE) {
-                    clientReceivedHandshake = true;
-                } else if (evt == ClientHandshakeStateEvent.HANDSHAKE_TIMEOUT) {
-                    clientHandshakeTimeout = true;
-                }
-            }
-
-            @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-                if (msg instanceof TextWebSocketFrame) {
-                    clientReceivedMessage = true;
-                }
-            }
-        }, 100);
-        // Client send the handshake request to server
-        transferAllDataWithMerge(clientChannel, serverChannel);
-        // Server do not send the response back
-        // transferAllDataWithMerge(serverChannel, clientChannel);
-        WebSocketClientProtocolHandshakeHandler handshakeHandler =
-                (WebSocketClientProtocolHandshakeHandler) clientChannel
-                        .pipeline().get(WebSocketClientProtocolHandshakeHandler.class.getName());
-
-        while (!handshakeHandler.getHandshakeFuture().isDone()) {
-            Thread.sleep(10);
-            // We need to run all pending tasks as the handshake timeout is scheduled on the EventLoop.
-            clientChannel.runScheduledPendingTasks();
-        }
-        assertTrue(clientHandshakeTimeout);
-        assertFalse(clientReceivedHandshake);
-        assertFalse(clientReceivedMessage);
-        // Should throw WebSocketHandshakeException
-        try {
-            handshakeHandler.getHandshakeFuture().syncUninterruptibly();
-        } finally {
-            serverChannel.finishAndReleaseAll();
-        }
     }
 
     @Test(timeout = 10000)
@@ -275,25 +209,12 @@ public class WebSocketHandshakeHandOverTest {
     }
 
     private static EmbeddedChannel createClientChannel(ChannelHandler handler) throws Exception {
-        return createClientChannel(handler, WebSocketClientProtocolConfig.newBuilder()
-            .webSocketUri("ws://localhost:1234/test")
-            .subprotocol("test-proto-2")
-            .build());
-    }
-
-    private static EmbeddedChannel createClientChannel(ChannelHandler handler, long timeoutMillis) throws Exception {
-        return createClientChannel(handler, WebSocketClientProtocolConfig.newBuilder()
-            .webSocketUri("ws://localhost:1234/test")
-            .subprotocol("test-proto-2")
-            .handshakeTimeoutMillis(timeoutMillis)
-            .build());
-    }
-
-    private static EmbeddedChannel createClientChannel(ChannelHandler handler, WebSocketClientProtocolConfig config) {
         return new EmbeddedChannel(
                 new HttpClientCodec(),
                 new HttpObjectAggregator(8192),
-                new WebSocketClientProtocolHandler(config),
+                new WebSocketClientProtocolHandler(new URI("ws://localhost:1234/test"),
+                                                   WebSocketVersion.V13, "test-proto-2",
+                                                   false, null, 65536),
                 handler);
     }
 
@@ -323,4 +244,5 @@ public class WebSocketHandshakeHandOverTest {
                 webSocketHandler,
                 handler);
     }
+
 }

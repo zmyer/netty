@@ -20,42 +20,40 @@ import io.netty.channel.EventLoop;
 import io.netty.channel.ReflectiveChannelFactory;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.InternetProtocolFamily;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.resolver.HostsFileEntriesResolver;
 import io.netty.resolver.ResolvedAddressTypes;
-import io.netty.util.concurrent.Future;
+import io.netty.util.internal.UnstableApi;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.netty.util.internal.ObjectUtil.checkNotNull;
+import static io.netty.resolver.dns.DnsServerAddressStreamProviders.platformDefault;
 import static io.netty.util.internal.ObjectUtil.intValue;
+import static java.util.Objects.requireNonNull;
 
 /**
  * A {@link DnsNameResolver} builder.
  */
+@UnstableApi
 public final class DnsNameResolverBuilder {
     private EventLoop eventLoop;
     private ChannelFactory<? extends DatagramChannel> channelFactory;
-    private ChannelFactory<? extends SocketChannel> socketChannelFactory;
     private DnsCache resolveCache;
     private DnsCnameCache cnameCache;
     private AuthoritativeDnsServerCache authoritativeDnsServerCache;
     private Integer minTtl;
     private Integer maxTtl;
     private Integer negativeTtl;
-    private long queryTimeoutMillis = -1;
+    private long queryTimeoutMillis = 5000;
     private ResolvedAddressTypes resolvedAddressTypes = DnsNameResolver.DEFAULT_RESOLVE_ADDRESS_TYPES;
-    private boolean completeOncePreferredResolved;
     private boolean recursionDesired = true;
-    private int maxQueriesPerResolve = -1;
+    private int maxQueriesPerResolve = 16;
     private boolean traceEnabled;
     private int maxPayloadSize = 4096;
     private boolean optResourceEnabled = true;
     private HostsFileEntriesResolver hostsFileEntriesResolver = HostsFileEntriesResolver.DEFAULT;
-    private DnsServerAddressStreamProvider dnsServerAddressStreamProvider =
-            DnsServerAddressStreamProviders.platformDefault();
+    private DnsServerAddressStreamProvider dnsServerAddressStreamProvider = platformDefault();
     private DnsQueryLifecycleObserverFactory dnsQueryLifecycleObserverFactory =
             NoopDnsQueryLifecycleObserverFactory.INSTANCE;
     private String[] searchDomains;
@@ -116,35 +114,6 @@ public final class DnsNameResolverBuilder {
     }
 
     /**
-     * Sets the {@link ChannelFactory} that will create a {@link SocketChannel} for
-     * <a href="https://tools.ietf.org/html/rfc7766">TCP fallback</a> if needed.
-     *
-     * @param channelFactory the {@link ChannelFactory} or {@code null}
-     *                       if <a href="https://tools.ietf.org/html/rfc7766">TCP fallback</a> should not be supported.
-     * @return {@code this}
-     */
-    public DnsNameResolverBuilder socketChannelFactory(ChannelFactory<? extends SocketChannel> channelFactory) {
-        this.socketChannelFactory = channelFactory;
-        return this;
-    }
-
-    /**
-     * Sets the {@link ChannelFactory} as a {@link ReflectiveChannelFactory} of this type for
-     * <a href="https://tools.ietf.org/html/rfc7766">TCP fallback</a> if needed.
-     * Use as an alternative to {@link #socketChannelFactory(ChannelFactory)}.
-     *
-     * @param channelType the type or {@code null} if <a href="https://tools.ietf.org/html/rfc7766">TCP fallback</a>
-     *                    should not be supported.
-     * @return {@code this}
-     */
-    public DnsNameResolverBuilder socketChannelType(Class<? extends SocketChannel> channelType) {
-        if (channelType == null) {
-            return socketChannelFactory(null);
-        }
-        return socketChannelFactory(new ReflectiveChannelFactory<SocketChannel>(channelType));
-    }
-
-    /**
      * Sets the cache for resolution results.
      *
      * @param resolveCache the DNS resolution results cache
@@ -173,7 +142,7 @@ public final class DnsNameResolverBuilder {
      */
     public DnsNameResolverBuilder dnsQueryLifecycleObserverFactory(DnsQueryLifecycleObserverFactory
                                                                            lifecycleObserverFactory) {
-        this.dnsQueryLifecycleObserverFactory = checkNotNull(lifecycleObserverFactory, "lifecycleObserverFactory");
+        this.dnsQueryLifecycleObserverFactory = requireNonNull(lifecycleObserverFactory, "lifecycleObserverFactory");
         return this;
     }
 
@@ -285,18 +254,6 @@ public final class DnsNameResolverBuilder {
     }
 
     /**
-     * If {@code true} {@link DnsNameResolver#resolveAll(String)} will notify the returned {@link Future} as
-     * soon as all queries for the preferred address-type are complete.
-     *
-     * @param completeOncePreferredResolved {@code true} to enable, {@code false} to disable.
-     * @return {@code this}
-     */
-    public DnsNameResolverBuilder completeOncePreferredResolved(boolean completeOncePreferredResolved) {
-        this.completeOncePreferredResolved = completeOncePreferredResolved;
-        return this;
-    }
-
-    /**
      * Sets if this resolver has to send a DNS query with the RD (recursion desired) flag set.
      *
      * @param recursionDesired true if recursion is desired
@@ -375,7 +332,7 @@ public final class DnsNameResolverBuilder {
      */
     public DnsNameResolverBuilder nameServerProvider(DnsServerAddressStreamProvider dnsServerAddressStreamProvider) {
         this.dnsServerAddressStreamProvider =
-                checkNotNull(dnsServerAddressStreamProvider, "dnsServerAddressStreamProvider");
+                requireNonNull(dnsServerAddressStreamProvider, "dnsServerAddressStreamProvider");
         return this;
     }
 
@@ -386,9 +343,9 @@ public final class DnsNameResolverBuilder {
      * @return {@code this}
      */
     public DnsNameResolverBuilder searchDomains(Iterable<String> searchDomains) {
-        checkNotNull(searchDomains, "searchDomains");
+        requireNonNull(searchDomains, "searchDomains");
 
-        final List<String> list = new ArrayList<String>(4);
+        final List<String> list = new ArrayList<>(4);
 
         for (String f : searchDomains) {
             if (f == null) {
@@ -473,7 +430,6 @@ public final class DnsNameResolverBuilder {
         return new DnsNameResolver(
                 eventLoop,
                 channelFactory,
-                socketChannelFactory,
                 resolveCache,
                 cnameCache,
                 authoritativeDnsServerCache,
@@ -489,8 +445,7 @@ public final class DnsNameResolverBuilder {
                 dnsServerAddressStreamProvider,
                 searchDomains,
                 ndots,
-                decodeIdn,
-                completeOncePreferredResolved);
+                decodeIdn);
     }
 
     /**
@@ -507,10 +462,6 @@ public final class DnsNameResolverBuilder {
 
         if (channelFactory != null) {
             copiedBuilder.channelFactory(channelFactory);
-        }
-
-        if (socketChannelFactory != null) {
-            copiedBuilder.socketChannelFactory(socketChannelFactory);
         }
 
         if (resolveCache != null) {
@@ -555,7 +506,6 @@ public final class DnsNameResolverBuilder {
 
         copiedBuilder.ndots(ndots);
         copiedBuilder.decodeIdn(decodeIdn);
-        copiedBuilder.completeOncePreferredResolved(completeOncePreferredResolved);
 
         return copiedBuilder;
     }

@@ -21,7 +21,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.net.ssl.SSLEngine;
-
+import javax.net.ssl.SSLException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -35,33 +35,23 @@ import static org.junit.Assume.assumeTrue;
 @RunWith(Parameterized.class)
 public class OpenSslJdkSslEngineInteroptTest extends SSLEngineTest {
 
-    @Parameterized.Parameters(name = "{index}: bufferType = {0}, combo = {1}, delegate = {2}, useTasks = {3}")
+    @Parameterized.Parameters(name = "{index}: bufferType = {0}, combo = {1}, delegate = {2}")
     public static Collection<Object[]> data() {
-        List<Object[]> params = new ArrayList<Object[]>();
+        List<Object[]> params = new ArrayList<>();
         for (BufferType type: BufferType.values()) {
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), false, false });
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), false, true });
-
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), true, false});
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), true, true });
+            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), false });
+            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), true });
 
             if (PlatformDependent.javaVersion() >= 11 && OpenSsl.isTlsv13Supported()) {
-                params.add(new Object[] { type, ProtocolCipherCombo.tlsv13(), false, false });
-                params.add(new Object[] { type, ProtocolCipherCombo.tlsv13(), false, true });
-
-                params.add(new Object[] { type, ProtocolCipherCombo.tlsv13(), true, false });
-                params.add(new Object[] { type, ProtocolCipherCombo.tlsv13(), true, true });
+                params.add(new Object[] { type, ProtocolCipherCombo.tlsv13(), false });
+                params.add(new Object[] { type, ProtocolCipherCombo.tlsv13(), true });
             }
         }
         return params;
     }
 
-    private final boolean useTasks;
-
-    public OpenSslJdkSslEngineInteroptTest(BufferType type, ProtocolCipherCombo combo,
-                                           boolean delegate, boolean useTasks) {
+    public OpenSslJdkSslEngineInteroptTest(BufferType type, ProtocolCipherCombo combo, boolean delegate) {
         super(type, combo, delegate);
-        this.useTasks = useTasks;
     }
 
     @BeforeClass
@@ -130,29 +120,7 @@ public class OpenSslJdkSslEngineInteroptTest extends SSLEngineTest {
     }
 
     @Override
-    @Test
-    public void testSupportedSignatureAlgorithms() throws Exception {
-        checkShouldUseKeyManagerFactory();
-        super.testSupportedSignatureAlgorithms();
-    }
-
-    @Override
-    @Test
-    public void testSessionLocalWhenNonMutualWithKeyManager() throws Exception {
-        checkShouldUseKeyManagerFactory();
-        super.testSessionLocalWhenNonMutualWithKeyManager();
-    }
-
-    @Override
     protected SSLEngine wrapEngine(SSLEngine engine) {
         return Java8SslTestUtils.wrapSSLEngineForTesting(engine);
-    }
-
-    @Override
-    protected SslContext wrapContext(SslContext context) {
-        if (context instanceof OpenSslContext) {
-            ((OpenSslContext) context).setUseTasks(useTasks);
-        }
-        return context;
     }
 }

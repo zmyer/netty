@@ -15,11 +15,12 @@
  */
 package io.netty.handler.codec.http.multipart;
 
+import static java.util.Objects.requireNonNull;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelException;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.util.internal.ObjectUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,10 +38,6 @@ public class DiskFileUpload extends AbstractDiskHttpData implements FileUpload {
 
     public static final String postfix = ".tmp";
 
-    private final String baseDir;
-
-    private final boolean deleteOnExit;
-
     private String filename;
 
     private String contentType;
@@ -48,19 +45,11 @@ public class DiskFileUpload extends AbstractDiskHttpData implements FileUpload {
     private String contentTransferEncoding;
 
     public DiskFileUpload(String name, String filename, String contentType,
-            String contentTransferEncoding, Charset charset, long size, String baseDir, boolean deleteOnExit) {
+            String contentTransferEncoding, Charset charset, long size) {
         super(name, charset, size);
         setFilename(filename);
         setContentType(contentType);
         setContentTransferEncoding(contentTransferEncoding);
-        this.baseDir = baseDir == null ? baseDirectory : baseDir;
-        this.deleteOnExit = deleteOnExit;
-    }
-
-    public DiskFileUpload(String name, String filename, String contentType,
-            String contentTransferEncoding, Charset charset, long size) {
-        this(name, filename, contentType, contentTransferEncoding,
-                charset, size, baseDirectory, deleteOnExitTemporaryFile);
     }
 
     @Override
@@ -75,7 +64,8 @@ public class DiskFileUpload extends AbstractDiskHttpData implements FileUpload {
 
     @Override
     public void setFilename(String filename) {
-        this.filename = ObjectUtil.checkNotNull(filename, "filename");
+        requireNonNull(filename, "filename");
+        this.filename = filename;
     }
 
     @Override
@@ -103,7 +93,8 @@ public class DiskFileUpload extends AbstractDiskHttpData implements FileUpload {
 
     @Override
     public void setContentType(String contentType) {
-        this.contentType = ObjectUtil.checkNotNull(contentType, "contentType");
+        requireNonNull(contentType, "contentType");
+        this.contentType = contentType;
     }
 
     @Override
@@ -144,12 +135,12 @@ public class DiskFileUpload extends AbstractDiskHttpData implements FileUpload {
 
     @Override
     protected boolean deleteOnExit() {
-        return deleteOnExit;
+        return deleteOnExitTemporaryFile;
     }
 
     @Override
     protected String getBaseDirectory() {
-        return baseDir;
+        return baseDirectory;
     }
 
     @Override
@@ -202,8 +193,7 @@ public class DiskFileUpload extends AbstractDiskHttpData implements FileUpload {
     @Override
     public FileUpload replace(ByteBuf content) {
         DiskFileUpload upload = new DiskFileUpload(
-                getName(), getFilename(), getContentType(), getContentTransferEncoding(), getCharset(), size,
-                baseDir, deleteOnExit);
+                getName(), getFilename(), getContentType(), getContentTransferEncoding(), getCharset(), size);
         if (content != null) {
             try {
                 upload.setContent(content);

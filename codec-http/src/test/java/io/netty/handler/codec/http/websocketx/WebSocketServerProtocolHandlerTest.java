@@ -18,8 +18,7 @@ package io.netty.handler.codec.http.websocketx;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelInboundHandler;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
@@ -47,7 +46,7 @@ import static org.junit.Assert.*;
 
 public class WebSocketServerProtocolHandlerTest {
 
-    private final Queue<FullHttpResponse> responses = new ArrayDeque<FullHttpResponse>();
+    private final Queue<FullHttpResponse> responses = new ArrayDeque<>();
 
     @Before
     public void setUp() {
@@ -362,7 +361,7 @@ public class WebSocketServerProtocolHandlerTest {
         return response.content().toString(CharsetUtil.UTF_8);
     }
 
-    private class MockOutboundHandler extends ChannelOutboundHandlerAdapter {
+    private class MockOutboundHandler implements ChannelHandler {
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
@@ -375,7 +374,7 @@ public class WebSocketServerProtocolHandlerTest {
         }
     }
 
-    private static class CustomTextFrameHandler extends ChannelInboundHandlerAdapter {
+    private static class CustomTextFrameHandler implements ChannelInboundHandler {
         private String content;
 
         @Override

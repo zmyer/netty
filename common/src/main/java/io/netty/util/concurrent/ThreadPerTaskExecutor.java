@@ -15,17 +15,17 @@
  */
 package io.netty.util.concurrent;
 
-import io.netty.util.internal.ObjectUtil;
+import static java.util.Objects.requireNonNull;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
-//FGTODO: 2019/10/31 下午7:29 zmyer
 public final class ThreadPerTaskExecutor implements Executor {
     private final ThreadFactory threadFactory;
 
     public ThreadPerTaskExecutor(ThreadFactory threadFactory) {
-        this.threadFactory = ObjectUtil.checkNotNull(threadFactory, "threadFactory");
+        requireNonNull(threadFactory, "threadFactory");
+        this.threadFactory = threadFactory;
     }
 
     @Override

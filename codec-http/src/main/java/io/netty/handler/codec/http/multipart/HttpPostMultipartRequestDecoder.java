@@ -41,7 +41,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import static io.netty.util.internal.ObjectUtil.*;
+import static io.netty.buffer.Unpooled.buffer;
+import static io.netty.handler.codec.http.multipart.HttpPostBodyUtil.BINARY_STRING;
+import static io.netty.handler.codec.http.multipart.HttpPostBodyUtil.BIT_7_STRING;
+import static io.netty.handler.codec.http.multipart.HttpPostBodyUtil.BIT_8_STRING;
+import static io.netty.util.internal.ObjectUtil.checkPositiveOrZero;
+import static java.util.Objects.requireNonNull;
 
 /**
  * This decoder will decode Body and can handle POST BODY.
@@ -74,12 +79,12 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
     /**
      * HttpDatas from Body
      */
-    private final List<InterfaceHttpData> bodyListHttpData = new ArrayList<InterfaceHttpData>();
+    private final List<InterfaceHttpData> bodyListHttpData = new ArrayList<>();
 
     /**
      * HttpDatas as Map from Body
      */
-    private final Map<String, List<InterfaceHttpData>> bodyMapHttpData = new TreeMap<String, List<InterfaceHttpData>>(
+    private final Map<String, List<InterfaceHttpData>> bodyMapHttpData = new TreeMap<>(
             CaseIgnoringComparator.INSTANCE);
 
     /**
@@ -172,9 +177,9 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
      *             errors
      */
     public HttpPostMultipartRequestDecoder(HttpDataFactory factory, HttpRequest request, Charset charset) {
-        this.request = checkNotNull(request, "request");
-        this.charset = checkNotNull(charset, "charset");
-        this.factory = checkNotNull(factory, "factory");
+        this.request = requireNonNull(request, "request");
+        this.charset = requireNonNull(charset, "charset");
+        this.factory = requireNonNull(factory, "factory");
         // Fill default values
 
         setMultipart(this.request.headers().get(HttpHeaderNames.CONTENT_TYPE));
@@ -183,6 +188,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
             // See #1089
             offer((HttpContent) request);
         } else {
+            undecodedChunk = buffer();
             parseBody();
         }
     }
@@ -319,25 +325,17 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
     public HttpPostMultipartRequestDecoder offer(HttpContent content) {
         checkDestroyed();
 
-        if (content instanceof LastHttpContent) {
-            isLastChunk = true;
-        }
-
+        // Maybe we should better not copy here for performance reasons but this will need
+        // more care by the caller to release the content in a correct manner later
+        // So maybe something to optimize on a later stage
         ByteBuf buf = content.content();
         if (undecodedChunk == null) {
-            undecodedChunk = isLastChunk ?
-                    // Take a slice instead of copying when the first chunk is also the last
-                    // as undecodedChunk.writeBytes will never be called.
-                    buf.retainedSlice() :
-                    // Maybe we should better not copy here for performance reasons but this will need
-                    // more care by the caller to release the content in a correct manner later
-                    // So maybe something to optimize on a later stage
-                    //
-                    // We are explicit allocate a buffer and NOT calling copy() as otherwise it may set a maxCapacity
-                    // which is not really usable for us as we may exceed it once we add more bytes.
-                    buf.alloc().buffer(buf.readableBytes()).writeBytes(buf);
+            undecodedChunk = buf.copy();
         } else {
             undecodedChunk.writeBytes(buf);
+        }
+        if (content instanceof LastHttpContent) {
+            isLastChunk = true;
         }
         parseBody();
         if (undecodedChunk != null && undecodedChunk.writerIndex() > discardThreshold) {
@@ -426,7 +424,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
         }
         List<InterfaceHttpData> datas = bodyMapHttpData.get(data.getName());
         if (datas == null) {
-            datas = new ArrayList<InterfaceHttpData>(1);
+            datas = new ArrayList<>(1);
             bodyMapHttpData.put(data.getName(), datas);
         }
         datas.add(data);
@@ -502,9 +500,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
             if (charsetAttribute != null) {
                 try {
                     localCharset = Charset.forName(charsetAttribute.getValue());
-                } catch (IOException e) {
-                    throw new ErrorDataDecoderException(e);
-                } catch (UnsupportedCharsetException e) {
+                } catch (IOException | UnsupportedCharsetException e) {
                     throw new ErrorDataDecoderException(e);
                 }
             }
@@ -529,11 +525,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
                         currentAttribute = factory.createAttribute(request,
                                 cleanString(nameAttribute.getValue()));
                     }
-                } catch (NullPointerException e) {
-                    throw new ErrorDataDecoderException(e);
-                } catch (IllegalArgumentException e) {
-                    throw new ErrorDataDecoderException(e);
-                } catch (IOException e) {
+                } catch (NullPointerException | IOException | IllegalArgumentException e) {
                     throw new ErrorDataDecoderException(e);
                 }
                 if (localCharset != null) {
@@ -671,7 +663,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
     private InterfaceHttpData findMultipartDisposition() {
         int readerIndex = undecodedChunk.readerIndex();
         if (currentStatus == MultiPartStatus.DISPOSITION) {
-            currentFieldAttributes = new TreeMap<CharSequence, Attribute>(CaseIgnoringComparator.INSTANCE);
+            currentFieldAttributes = new TreeMap<>(CaseIgnoringComparator.INSTANCE);
         }
         // read many lines until empty line with newline found! Store all data
         while (!skipOneLine()) {
@@ -699,9 +691,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
                         Attribute attribute;
                         try {
                             attribute = getContentDispositionAttribute(values);
-                        } catch (NullPointerException e) {
-                            throw new ErrorDataDecoderException(e);
-                        } catch (IllegalArgumentException e) {
+                        } catch (NullPointerException | IllegalArgumentException e) {
                             throw new ErrorDataDecoderException(e);
                         }
                         currentFieldAttributes.put(attribute.getName(), attribute);
@@ -712,9 +702,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
                 try {
                     attribute = factory.createAttribute(request, HttpHeaderNames.CONTENT_TRANSFER_ENCODING.toString(),
                             cleanString(contents[1]));
-                } catch (NullPointerException e) {
-                    throw new ErrorDataDecoderException(e);
-                } catch (IllegalArgumentException e) {
+                } catch (NullPointerException | IllegalArgumentException e) {
                     throw new ErrorDataDecoderException(e);
                 }
 
@@ -724,9 +712,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
                 try {
                     attribute = factory.createAttribute(request, HttpHeaderNames.CONTENT_LENGTH.toString(),
                             cleanString(contents[1]));
-                } catch (NullPointerException e) {
-                    throw new ErrorDataDecoderException(e);
-                } catch (IllegalArgumentException e) {
+                } catch (NullPointerException | IllegalArgumentException e) {
                     throw new ErrorDataDecoderException(e);
                 }
 
@@ -750,9 +736,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
                             Attribute attribute;
                             try {
                                 attribute = factory.createAttribute(request, charsetHeader, cleanString(values));
-                            } catch (NullPointerException e) {
-                                throw new ErrorDataDecoderException(e);
-                            } catch (IllegalArgumentException e) {
+                            } catch (NullPointerException | IllegalArgumentException e) {
                                 throw new ErrorDataDecoderException(e);
                             }
                             currentFieldAttributes.put(HttpHeaderValues.CHARSET, attribute);
@@ -761,15 +745,15 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
                             try {
                                 attribute = factory.createAttribute(request,
                                         cleanString(contents[0]), contents[i]);
-                            } catch (NullPointerException e) {
-                                throw new ErrorDataDecoderException(e);
-                            } catch (IllegalArgumentException e) {
+                            } catch (NullPointerException | IllegalArgumentException e) {
                                 throw new ErrorDataDecoderException(e);
                             }
                             currentFieldAttributes.put(attribute.getName(), attribute);
                         }
                     }
                 }
+            } else {
+                throw new ErrorDataDecoderException("Unknown Params: " + newline);
             }
         }
         // Is it a FileUpload
@@ -817,12 +801,10 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
         } else if (FILENAME_ENCODED.equals(name)) {
             try {
                 name = HttpHeaderValues.FILENAME.toString();
-                String[] split = cleanString(value).split("'", 3);
+                String[] split = value.split("'", 3);
                 value = QueryStringDecoder.decodeComponent(split[2], Charset.forName(split[0]));
-            } catch (ArrayIndexOutOfBoundsException e) {
+            } catch (ArrayIndexOutOfBoundsException | UnsupportedCharsetException e) {
                  throw new ErrorDataDecoderException(e);
-            } catch (UnsupportedCharsetException e) {
-                throw new ErrorDataDecoderException(e);
             }
         } else {
             // otherwise we need to clean the value
@@ -853,25 +835,27 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
             } catch (IOException e) {
                 throw new ErrorDataDecoderException(e);
             }
-            if (code.equals(HttpPostBodyUtil.TransferEncodingMechanism.BIT7.value())) {
-                localCharset = CharsetUtil.US_ASCII;
-            } else if (code.equals(HttpPostBodyUtil.TransferEncodingMechanism.BIT8.value())) {
-                localCharset = CharsetUtil.ISO_8859_1;
-                mechanism = TransferEncodingMechanism.BIT8;
-            } else if (code.equals(HttpPostBodyUtil.TransferEncodingMechanism.BINARY.value())) {
-                // no real charset, so let the default
-                mechanism = TransferEncodingMechanism.BINARY;
-            } else {
-                throw new ErrorDataDecoderException("TransferEncoding Unknown: " + code);
+            switch (code) {
+                case BIT_7_STRING:
+                    localCharset = CharsetUtil.US_ASCII;
+                    break;
+                case BIT_8_STRING:
+                    localCharset = CharsetUtil.ISO_8859_1;
+                    mechanism = TransferEncodingMechanism.BIT8;
+                    break;
+                case BINARY_STRING:
+                    // no real charset, so let the default
+                    mechanism = TransferEncodingMechanism.BINARY;
+                    break;
+                default:
+                    throw new ErrorDataDecoderException("TransferEncoding Unknown: " + code);
             }
         }
         Attribute charsetAttribute = currentFieldAttributes.get(HttpHeaderValues.CHARSET);
         if (charsetAttribute != null) {
             try {
                 localCharset = Charset.forName(charsetAttribute.getValue());
-            } catch (IOException e) {
-                throw new ErrorDataDecoderException(e);
-            } catch (UnsupportedCharsetException e) {
+            } catch (IOException | UnsupportedCharsetException e) {
                 throw new ErrorDataDecoderException(e);
             }
         }
@@ -899,11 +883,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
                         cleanString(nameAttribute.getValue()), cleanString(filenameAttribute.getValue()),
                         contentType, mechanism.value(), localCharset,
                         size);
-            } catch (NullPointerException e) {
-                throw new ErrorDataDecoderException(e);
-            } catch (IllegalArgumentException e) {
-                throw new ErrorDataDecoderException(e);
-            } catch (IOException e) {
+            } catch (NullPointerException | IllegalArgumentException | IOException e) {
                 throw new ErrorDataDecoderException(e);
             }
         }
@@ -937,14 +917,18 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
      */
     @Override
     public void destroy() {
-        // Release all data items, including those not yet pulled
+        checkDestroyed();
         cleanFiles();
-
         destroyed = true;
 
         if (undecodedChunk != null && undecodedChunk.refCnt() > 0) {
             undecodedChunk.release();
             undecodedChunk = null;
+        }
+
+        // release all data which was not yet pulled
+        for (int i = bodyListHttpDataRank; i < bodyListHttpData.size(); i++) {
+            bodyListHttpData.get(i).release();
         }
     }
 
@@ -990,8 +974,9 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
      */
     private static String readLineStandard(ByteBuf undecodedChunk, Charset charset) {
         int readerIndex = undecodedChunk.readerIndex();
-        ByteBuf line = undecodedChunk.alloc().heapBuffer(64);
         try {
+            ByteBuf line = buffer(64);
+
             while (undecodedChunk.isReadable()) {
                 byte nextByte = undecodedChunk.readByte();
                 if (nextByte == HttpConstants.CR) {
@@ -1014,8 +999,6 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
         } catch (IndexOutOfBoundsException e) {
             undecodedChunk.readerIndex(readerIndex);
             throw new NotEnoughDataDecoderException(e);
-        } finally {
-            line.release();
         }
         undecodedChunk.readerIndex(readerIndex);
         throw new NotEnoughDataDecoderException();
@@ -1035,8 +1018,9 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
         }
         SeekAheadOptimize sao = new SeekAheadOptimize(undecodedChunk);
         int readerIndex = undecodedChunk.readerIndex();
-        ByteBuf line = undecodedChunk.alloc().heapBuffer(64);
         try {
+            ByteBuf line = buffer(64);
+
             while (sao.pos < sao.limit) {
                 byte nextByte = sao.bytes[sao.pos++];
                 if (nextByte == HttpConstants.CR) {
@@ -1063,8 +1047,6 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
         } catch (IndexOutOfBoundsException e) {
             undecodedChunk.readerIndex(readerIndex);
             throw new NotEnoughDataDecoderException(e);
-        } finally {
-            line.release();
         }
         undecodedChunk.readerIndex(readerIndex);
         throw new NotEnoughDataDecoderException();
@@ -1323,7 +1305,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
         if (prevByte == HttpConstants.CR) {
             lastPosition--;
         }
-        ByteBuf content = undecodedChunk.retainedSlice(startReaderIndex, lastPosition - startReaderIndex);
+        ByteBuf content = undecodedChunk.copy(startReaderIndex, lastPosition - startReaderIndex);
         try {
             httpData.addContent(content, delimiterFound);
         } catch (IOException e) {
@@ -1372,7 +1354,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
             lastRealPos--;
         }
         final int lastPosition = sao.getReadPosition(lastRealPos);
-        final ByteBuf content = undecodedChunk.retainedSlice(startReaderIndex, lastPosition - startReaderIndex);
+        final ByteBuf content = undecodedChunk.copy(startReaderIndex, lastPosition - startReaderIndex);
         try {
             httpData.addContent(content, delimiterFound);
         } catch (IOException e) {
@@ -1447,7 +1429,7 @@ public class HttpPostMultipartRequestDecoder implements InterfaceHttpPostRequest
      *         follows by several values that were separated by ';' or ','
      */
     private static String[] splitMultipartHeader(String sb) {
-        ArrayList<String> headers = new ArrayList<String>(1);
+        ArrayList<String> headers = new ArrayList<>(1);
         int nameStart;
         int nameEnd;
         int colonEnd;

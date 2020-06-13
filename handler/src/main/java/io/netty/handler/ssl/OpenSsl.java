@@ -33,6 +33,8 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -44,7 +46,7 @@ import java.util.Set;
 import static io.netty.handler.ssl.SslUtils.*;
 
 /**
- * Tells if <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
+ * Tells if <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
  * are available.
  */
 public final class OpenSsl {
@@ -137,7 +139,7 @@ public final class OpenSsl {
                             "Failed to load netty-tcnative; " +
                                     OpenSslEngine.class.getSimpleName() + " will be unavailable, unless the " +
                                     "application has already loaded the symbols by some other means. " +
-                                    "See https://netty.io/wiki/forked-tomcat-native.html for more information.", t);
+                                    "See http://netty.io/wiki/forked-tomcat-native.html for more information.", t);
                 }
 
                 try {
@@ -160,7 +162,7 @@ public final class OpenSsl {
                     logger.debug(
                             "Failed to initialize netty-tcnative; " +
                                     OpenSslEngine.class.getSimpleName() + " will be unavailable. " +
-                                    "See https://netty.io/wiki/forked-tomcat-native.html for more information.", t);
+                                    "See http://netty.io/wiki/forked-tomcat-native.html for more information.", t);
                 }
             }
         }
@@ -170,8 +172,8 @@ public final class OpenSsl {
         if (cause == null) {
             logger.debug("netty-tcnative using native library: {}", SSL.versionString());
 
-            final List<String> defaultCiphers = new ArrayList<String>();
-            final Set<String> availableOpenSslCipherSuites = new LinkedHashSet<String>(128);
+            final List<String> defaultCiphers = new ArrayList<>();
+            final Set<String> availableOpenSslCipherSuites = new LinkedHashSet<>(128);
             boolean supportsKeyManagerFactory = false;
             boolean useKeyManagerFactory = false;
             boolean tlsv13Supported = false;
@@ -233,11 +235,7 @@ public final class OpenSsl {
 
                         PemEncoded privateKey = PemPrivateKey.valueOf(KEY.getBytes(CharsetUtil.US_ASCII));
                         try {
-                            // Let's check if we can set a callback, which may not work if the used OpenSSL version
-                            // is to old.
-                            SSLContext.setCertificateCallback(sslCtx, null);
-
-                            X509Certificate certificate = selfSignedCertificate();
+                             X509Certificate certificate = selfSignedCertificate();
                             certBio = ReferenceCountedOpenSslContext.toBIO(ByteBufAllocator.DEFAULT, certificate);
                             cert = SSL.parseX509Chain(certBio);
 
@@ -248,29 +246,13 @@ public final class OpenSsl {
                             SSL.setKeyMaterial(ssl, cert, key);
                             supportsKeyManagerFactory = true;
                             try {
-                                boolean propertySet = SystemPropertyUtil.contains(
-                                        "io.netty.handler.ssl.openssl.useKeyManagerFactory");
-                                if (!IS_BORINGSSL) {
-                                    useKeyManagerFactory = SystemPropertyUtil.getBoolean(
-                                            "io.netty.handler.ssl.openssl.useKeyManagerFactory", true);
-
-                                    if (propertySet) {
-                                        logger.info("System property " +
-                                                "'io.netty.handler.ssl.openssl.useKeyManagerFactory'" +
-                                                " is deprecated and so will be ignored in the future");
-                                    }
-                                } else {
-                                    useKeyManagerFactory = true;
-                                    if (propertySet) {
-                                        logger.info("System property " +
-                                                "'io.netty.handler.ssl.openssl.useKeyManagerFactory'" +
-                                                " is deprecated and will be ignored when using BoringSSL");
-                                    }
-                                }
+                                useKeyManagerFactory = AccessController.doPrivileged((PrivilegedAction<Boolean>) () ->
+                                        SystemPropertyUtil.getBoolean(
+                                                "io.netty.handler.ssl.openssl.useKeyManagerFactory", true));
                             } catch (Throwable ignore) {
                                 logger.debug("Failed to get useKeyManagerFactory system property.");
                             }
-                        } catch (Error ignore) {
+                        } catch (Throwable ignore) {
                             logger.debug("KeyManagerFactory not supported.");
                         } finally {
                             privateKey.release();
@@ -297,7 +279,7 @@ public final class OpenSsl {
                 logger.warn("Failed to get the list of available OpenSSL cipher suites.", e);
             }
             AVAILABLE_OPENSSL_CIPHER_SUITES = Collections.unmodifiableSet(availableOpenSslCipherSuites);
-            final Set<String> availableJavaCipherSuites = new LinkedHashSet<String>(
+            final Set<String> availableJavaCipherSuites = new LinkedHashSet<>(
                     AVAILABLE_OPENSSL_CIPHER_SUITES.size() * 2);
             for (String cipher: AVAILABLE_OPENSSL_CIPHER_SUITES) {
                 // Included converted but also openssl cipher name
@@ -318,7 +300,7 @@ public final class OpenSsl {
 
             AVAILABLE_JAVA_CIPHER_SUITES = Collections.unmodifiableSet(availableJavaCipherSuites);
 
-            final Set<String> availableCipherSuites = new LinkedHashSet<String>(
+            final Set<String> availableCipherSuites = new LinkedHashSet<>(
                     AVAILABLE_OPENSSL_CIPHER_SUITES.size() + AVAILABLE_JAVA_CIPHER_SUITES.size());
             availableCipherSuites.addAll(AVAILABLE_OPENSSL_CIPHER_SUITES);
             availableCipherSuites.addAll(AVAILABLE_JAVA_CIPHER_SUITES);
@@ -327,7 +309,7 @@ public final class OpenSsl {
             SUPPORTS_KEYMANAGER_FACTORY = supportsKeyManagerFactory;
             USE_KEYMANAGER_FACTORY = useKeyManagerFactory;
 
-            Set<String> protocols = new LinkedHashSet<String>(6);
+            Set<String> protocols = new LinkedHashSet<>(6);
             // Seems like there is no way to explicitly disable SSLv2Hello in openssl so it is always enabled
             protocols.add(PROTOCOL_SSL_V2_HELLO);
             if (doesSupportProtocol(SSL.SSL_PROTOCOL_SSLV2, SSL.SSL_OP_NO_SSLv2)) {
@@ -422,7 +404,7 @@ public final class OpenSsl {
 
     /**
      * Returns {@code true} if and only if
-     * <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
+     * <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
      * are available.
      */
     public static boolean isAvailable() {
@@ -432,10 +414,7 @@ public final class OpenSsl {
     /**
      * Returns {@code true} if the used version of openssl supports
      * <a href="https://tools.ietf.org/html/rfc7301">ALPN</a>.
-     *
-     * @deprecated use {@link SslProvider#isAlpnSupported(SslProvider)} with {@link SslProvider#OPENSSL}.
      */
-    @Deprecated
     public static boolean isAlpnSupported() {
         return version() >= 0x10002000L;
     }
@@ -464,7 +443,7 @@ public final class OpenSsl {
     }
 
     /**
-     * Ensure that <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and
+     * Ensure that <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and
      * its OpenSSL support are available.
      *
      * @throws UnsatisfiedLinkError if unavailable
@@ -478,7 +457,7 @@ public final class OpenSsl {
 
     /**
      * Returns the cause of unavailability of
-     * <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support.
+     * <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support.
      *
      * @return the cause if unavailable. {@code null} if available.
      */
@@ -555,25 +534,15 @@ public final class OpenSsl {
         String os = PlatformDependent.normalizedOs();
         String arch = PlatformDependent.normalizedArch();
 
-        Set<String> libNames = new LinkedHashSet<String>(5);
+        Set<String> libNames = new LinkedHashSet<>(4);
         String staticLibName = "netty_tcnative";
 
         // First, try loading the platform-specific library. Platform-specific
         // libraries will be available if using a tcnative uber jar.
+        libNames.add(staticLibName + "_" + os + '_' + arch);
         if ("linux".equalsIgnoreCase(os)) {
-            Set<String> classifiers = PlatformDependent.normalizedLinuxClassifiers();
-            for (String classifier : classifiers) {
-                libNames.add(staticLibName + "_" + os + '_' + arch + "_" + classifier);
-            }
-            // generic arch-dependent library
-            libNames.add(staticLibName + "_" + os + '_' + arch);
-
-            // Fedora SSL lib so naming (libssl.so.10 vs libssl.so.1.0.0).
-            // note: should already be included from the classifiers but if not, we use this as an
-            //       additional fallback option here
+            // Fedora SSL lib so naming (libssl.so.10 vs libssl.so.1.0.0)..
             libNames.add(staticLibName + "_" + os + '_' + arch + "_fedora");
-        } else {
-            libNames.add(staticLibName + "_" + os + '_' + arch);
         }
         libNames.add(staticLibName + "_" + arch);
         libNames.add(staticLibName);

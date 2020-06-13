@@ -22,7 +22,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import javax.net.ssl.SSLEngine;
-
+import javax.net.ssl.SSLException;
 import java.security.Provider;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,25 +34,18 @@ import static org.junit.Assume.assumeTrue;
 @RunWith(Parameterized.class)
 public class ConscryptOpenSslEngineInteropTest extends ConscryptSslEngineTest {
 
-    @Parameterized.Parameters(name = "{index}: bufferType = {0}, combo = {1}, delegate = {2}, useTasks = {3}")
+    @Parameterized.Parameters(name = "{index}: bufferType = {0}, combo = {1}, delegate = {2}")
     public static Collection<Object[]> data() {
         List<Object[]> params = new ArrayList<Object[]>();
         for (BufferType type: BufferType.values()) {
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), false, false });
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), false, true });
-
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), true, false });
-            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), true, true });
+            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), false });
+            params.add(new Object[] { type, ProtocolCipherCombo.tlsv12(), true });
         }
         return params;
     }
 
-    private final boolean useTasks;
-
-    public ConscryptOpenSslEngineInteropTest(BufferType type, ProtocolCipherCombo combo,
-                                             boolean delegate, boolean useTasks) {
+    public ConscryptOpenSslEngineInteropTest(BufferType type, ProtocolCipherCombo combo, boolean delegate) {
         super(type, combo, delegate);
-        this.useTasks = useTasks;
     }
 
     @BeforeClass
@@ -118,23 +111,9 @@ public class ConscryptOpenSslEngineInteropTest extends ConscryptSslEngineTest {
 
     @Override
     @Test
-    public void testSessionAfterHandshakeKeyManagerFactory() throws Exception {
-        checkShouldUseKeyManagerFactory();
-        super.testSessionAfterHandshakeKeyManagerFactory();
-    }
-
-    @Override
-    @Test
     public void testSessionAfterHandshakeKeyManagerFactoryMutualAuth() throws Exception {
         checkShouldUseKeyManagerFactory();
         super.testSessionAfterHandshakeKeyManagerFactoryMutualAuth();
-    }
-
-    @Override
-    @Test
-    public void testSupportedSignatureAlgorithms() throws Exception {
-        checkShouldUseKeyManagerFactory();
-        super.testSupportedSignatureAlgorithms();
     }
 
     @Override
@@ -144,22 +123,7 @@ public class ConscryptOpenSslEngineInteropTest extends ConscryptSslEngineTest {
     }
 
     @Override
-    @Test
-    public void testSessionLocalWhenNonMutualWithKeyManager() throws Exception {
-        checkShouldUseKeyManagerFactory();
-        super.testSessionLocalWhenNonMutualWithKeyManager();
-    }
-
-    @Override
     protected SSLEngine wrapEngine(SSLEngine engine) {
         return Java8SslTestUtils.wrapSSLEngineForTesting(engine);
-    }
-
-    @Override
-    protected SslContext wrapContext(SslContext context) {
-        if (context instanceof OpenSslContext) {
-            ((OpenSslContext) context).setUseTasks(useTasks);
-        }
-        return context;
     }
 }

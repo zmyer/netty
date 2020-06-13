@@ -16,19 +16,16 @@
 package io.netty.handler.flush;
 
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundHandler;
 import io.netty.channel.ChannelOutboundInvoker;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
-import io.netty.util.internal.ObjectUtil;
 
 import java.util.concurrent.Future;
 
 /**
- * {@link ChannelDuplexHandler} which consolidates {@link Channel#flush()} / {@link ChannelHandlerContext#flush()}
+ * {@link ChannelHandler} which consolidates {@link Channel#flush()} / {@link ChannelHandlerContext#flush()}
  * operations (which also includes
  * {@link Channel#writeAndFlush(Object)} / {@link Channel#writeAndFlush(Object, ChannelPromise)} and
  * {@link ChannelOutboundInvoker#writeAndFlush(Object)} /
@@ -39,7 +36,7 @@ import java.util.concurrent.Future;
  * as much as possible.
  * <p>
  * If a read loop is currently ongoing, {@link #flush(ChannelHandlerContext)} will not be passed on to the next
- * {@link ChannelOutboundHandler} in the {@link ChannelPipeline}, as it will pick up any pending flushes when
+ * {@link ChannelHandler} in the {@link ChannelPipeline}, as it will pick up any pending flushes when
  * {@link #channelReadComplete(ChannelHandlerContext)} is triggered.
  * If no read loop is ongoing, the behavior depends on the {@code consolidateWhenNoReadInProgress} constructor argument:
  * <ul>
@@ -56,7 +53,7 @@ import java.util.concurrent.Future;
  * The {@link FlushConsolidationHandler} should be put as first {@link ChannelHandler} in the
  * {@link ChannelPipeline} to have the best effect.
  */
-public class FlushConsolidationHandler extends ChannelDuplexHandler {
+public class FlushConsolidationHandler implements ChannelHandler {
     private final int explicitFlushAfterFlushes;
     private final boolean consolidateWhenNoReadInProgress;
     private final Runnable flushTask;
@@ -96,19 +93,19 @@ public class FlushConsolidationHandler extends ChannelDuplexHandler {
      *                                        ongoing.
      */
     public FlushConsolidationHandler(int explicitFlushAfterFlushes, boolean consolidateWhenNoReadInProgress) {
-        this.explicitFlushAfterFlushes =
-                ObjectUtil.checkPositive(explicitFlushAfterFlushes, "explicitFlushAfterFlushes");
+        if (explicitFlushAfterFlushes <= 0) {
+            throw new IllegalArgumentException("explicitFlushAfterFlushes: "
+                    + explicitFlushAfterFlushes + " (expected: > 0)");
+        }
+        this.explicitFlushAfterFlushes = explicitFlushAfterFlushes;
         this.consolidateWhenNoReadInProgress = consolidateWhenNoReadInProgress;
-        this.flushTask = consolidateWhenNoReadInProgress ?
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        if (flushPendingCount > 0 && !readInProgress) {
-                            flushPendingCount = 0;
-                            nextScheduledFlush = null;
-                            ctx.flush();
-                        } // else we'll flush when the read completes
-                    }
+        flushTask = consolidateWhenNoReadInProgress ?
+                () -> {
+                    if (flushPendingCount > 0 && !readInProgress) {
+                        flushPendingCount = 0;
+                        ctx.flush();
+                        nextScheduledFlush = null;
+                    } // else we'll flush when the read completes
                 }
                 : null;
     }

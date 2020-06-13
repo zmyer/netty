@@ -30,6 +30,7 @@ import io.netty.util.AsciiString;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * <p>
@@ -88,34 +89,7 @@ public class WebSocketClientHandshaker00 extends WebSocketClientHandshaker {
     public WebSocketClientHandshaker00(URI webSocketURL, WebSocketVersion version, String subprotocol,
                                        HttpHeaders customHeaders, int maxFramePayloadLength,
                                        long forceCloseTimeoutMillis) {
-        this(webSocketURL, version, subprotocol, customHeaders, maxFramePayloadLength, forceCloseTimeoutMillis, false);
-    }
-
-    /**
-     * Creates a new instance with the specified destination WebSocket location and version to initiate.
-     *
-     * @param webSocketURL
-     *            URL for web socket communications. e.g "ws://myhost.com/mypath". Subsequent web socket frames will be
-     *            sent to this URL.
-     * @param version
-     *            Version of web socket specification to use to connect to the server
-     * @param subprotocol
-     *            Sub protocol request sent to the server.
-     * @param customHeaders
-     *            Map of custom headers to add to the client request
-     * @param maxFramePayloadLength
-     *            Maximum length of a frame's payload
-     * @param forceCloseTimeoutMillis
-     *            Close the connection if it was not closed by the server after timeout specified
-     * @param  absoluteUpgradeUrl
-     *            Use an absolute url for the Upgrade request, typically when connecting through an HTTP proxy over
-     *            clear HTTP
-     */
-    WebSocketClientHandshaker00(URI webSocketURL, WebSocketVersion version, String subprotocol,
-                                HttpHeaders customHeaders, int maxFramePayloadLength,
-                                long forceCloseTimeoutMillis, boolean absoluteUpgradeUrl) {
-        super(webSocketURL, version, subprotocol, customHeaders, maxFramePayloadLength, forceCloseTimeoutMillis,
-                absoluteUpgradeUrl);
+        super(webSocketURL, version, subprotocol, customHeaders, maxFramePayloadLength, forceCloseTimeoutMillis);
     }
 
     /**
@@ -139,14 +113,14 @@ public class WebSocketClientHandshaker00 extends WebSocketClientHandshaker {
     @Override
     protected FullHttpRequest newHandshakeRequest() {
         // Make keys
-        int spaces1 = WebSocketUtil.randomNumber(1, 12);
-        int spaces2 = WebSocketUtil.randomNumber(1, 12);
+        int spaces1 = ThreadLocalRandom.current().nextInt(1, 13);
+        int spaces2 = ThreadLocalRandom.current().nextInt(1, 13);
 
         int max1 = Integer.MAX_VALUE / spaces1;
         int max2 = Integer.MAX_VALUE / spaces2;
 
-        int number1 = WebSocketUtil.randomNumber(0, max1);
-        int number2 = WebSocketUtil.randomNumber(0, max2);
+        int number1 = ThreadLocalRandom.current().nextInt(0, max1);
+        int number2 = ThreadLocalRandom.current().nextInt(0, max2);
 
         int product1 = number1 * spaces1;
         int product2 = number2 * spaces2;
@@ -175,11 +149,12 @@ public class WebSocketClientHandshaker00 extends WebSocketClientHandshaker {
         System.arraycopy(key3, 0, challenge, 8, 8);
         expectedChallengeResponseBytes = Unpooled.wrappedBuffer(WebSocketUtil.md5(challenge));
 
+        // Get path
         URI wsURL = uri();
+        String path = rawPath(wsURL);
 
         // Format request
-        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, upgradeUrl(wsURL),
-                Unpooled.wrappedBuffer(key3));
+        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path);
         HttpHeaders headers = request.headers();
 
         if (customHeaders != null) {
@@ -189,12 +164,9 @@ public class WebSocketClientHandshaker00 extends WebSocketClientHandshaker {
         headers.set(HttpHeaderNames.UPGRADE, WEBSOCKET)
                .set(HttpHeaderNames.CONNECTION, HttpHeaderValues.UPGRADE)
                .set(HttpHeaderNames.HOST, websocketHostValue(wsURL))
+               .set(HttpHeaderNames.ORIGIN, websocketOriginValue(wsURL))
                .set(HttpHeaderNames.SEC_WEBSOCKET_KEY1, key1)
                .set(HttpHeaderNames.SEC_WEBSOCKET_KEY2, key2);
-
-        if (!headers.contains(HttpHeaderNames.ORIGIN)) {
-            headers.set(HttpHeaderNames.ORIGIN, websocketOriginValue(wsURL));
-        }
 
         String expectedSubprotocol = expectedSubprotocol();
         if (expectedSubprotocol != null && !expectedSubprotocol.isEmpty()) {
@@ -204,6 +176,7 @@ public class WebSocketClientHandshaker00 extends WebSocketClientHandshaker {
         // Set Content-Length to workaround some known defect.
         // See also: http://www.ietf.org/mail-archive/web/hybi/current/msg02149.html
         headers.set(HttpHeaderNames.CONTENT_LENGTH, key3.length);
+        request.content().writeBytes(key3);
         return request;
     }
 
@@ -253,20 +226,20 @@ public class WebSocketClientHandshaker00 extends WebSocketClientHandshaker {
     }
 
     private static String insertRandomCharacters(String key) {
-        int count = WebSocketUtil.randomNumber(1, 12);
+        int count = ThreadLocalRandom.current().nextInt(1, 13);
 
         char[] randomChars = new char[count];
         int randCount = 0;
         while (randCount < count) {
-            int rand = (int) (Math.random() * 0x7e + 0x21);
-            if (0x21 < rand && rand < 0x2f || 0x3a < rand && rand < 0x7e) {
+            int rand = ThreadLocalRandom.current().nextInt(0x22, 0x7e);
+            if (rand < 0x2f || 0x3a < rand) {
                 randomChars[randCount] = (char) rand;
                 randCount += 1;
             }
         }
 
         for (int i = 0; i < count; i++) {
-            int split = WebSocketUtil.randomNumber(0, key.length());
+            int split = ThreadLocalRandom.current().nextInt(0, key.length() + 1);
             String part1 = key.substring(0, split);
             String part2 = key.substring(split);
             key = part1 + randomChars[i] + part2;
@@ -277,7 +250,7 @@ public class WebSocketClientHandshaker00 extends WebSocketClientHandshaker {
 
     private static String insertSpaces(String key, int spaces) {
         for (int i = 0; i < spaces; i++) {
-            int split = WebSocketUtil.randomNumber(1, key.length() - 1);
+            int split = ThreadLocalRandom.current().nextInt(1, key.length());
             String part1 = key.substring(0, split);
             String part2 = key.substring(split);
             key = part1 + ' ' + part2;

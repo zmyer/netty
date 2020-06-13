@@ -85,17 +85,7 @@ public abstract class HttpContentDecoder extends MessageToMessageDecoder<HttpObj
                 if (contentEncoding != null) {
                     contentEncoding = contentEncoding.trim();
                 } else {
-                    String transferEncoding = headers.get(HttpHeaderNames.TRANSFER_ENCODING);
-                    if (transferEncoding != null) {
-                        int idx = transferEncoding.indexOf(",");
-                        if (idx != -1) {
-                            contentEncoding = transferEncoding.substring(0, idx).trim();
-                        } else {
-                            contentEncoding = transferEncoding.trim();
-                        }
-                    } else {
-                        contentEncoding = IDENTITY;
-                    }
+                    contentEncoding = IDENTITY;
                 }
                 decoder = newContentDecoder(contentEncoding);
 
@@ -142,7 +132,7 @@ public abstract class HttpContentDecoder extends MessageToMessageDecoder<HttpObj
                         copy = new DefaultHttpResponse(r.protocolVersion(), r.status());
                     } else {
                         throw new CodecException("Object of class " + message.getClass().getName() +
-                                                 " is not an HttpRequest or HttpResponse");
+                                                 " is not a HttpRequest or HttpResponse");
                     }
                     copy.headers().set(message.headers());
                     copy.setDecoderResult(message.decoderResult());

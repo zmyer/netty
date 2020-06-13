@@ -31,7 +31,6 @@
  */
 package io.netty.handler.codec.http2;
 
-import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.ResourcesUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,9 +57,11 @@ public class HpackTest {
     @Parameters(name = "{0}")
     public static Collection<Object[]> data() {
         File[] files = ResourcesUtil.getFile(HpackTest.class, TEST_DIR).listFiles();
-        ObjectUtil.checkNotNull(files, "files");
+        if (files == null) {
+            throw new NullPointerException("files");
+        }
 
-        ArrayList<Object[]> data = new ArrayList<Object[]>();
+        ArrayList<Object[]> data = new ArrayList<>();
         for (File file : files) {
             data.add(new Object[]{file.getName()});
         }
