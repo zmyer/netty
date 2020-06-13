@@ -28,6 +28,10 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static io.netty.handler.codec.http.HttpObjectDecoder.DEFAULT_MAX_CHUNK_SIZE;
+import static io.netty.handler.codec.http.HttpObjectDecoder.DEFAULT_MAX_HEADER_SIZE;
+import static io.netty.handler.codec.http.HttpObjectDecoder.DEFAULT_MAX_INITIAL_LINE_LENGTH;
+
 /**
  * A combination of {@link HttpRequestEncoder} and {@link HttpResponseDecoder}
  * which enables easier client side HTTP implementation. {@link HttpClientCodec}
@@ -46,7 +50,7 @@ public final class HttpClientCodec extends CombinedChannelDuplexHandler<HttpResp
         implements HttpClientUpgradeHandler.SourceCodec {
 
     /** A queue that is used for correlating a request and a response. */
-    private final Queue<HttpMethod> queue = new ArrayDeque<>();
+    private final Queue<HttpMethod> queue = new ArrayDeque<HttpMethod>();
     private final boolean parseHttpAfterConnectRequest;
 
     /** If true, decoding stops (i.e. pass-through) */
@@ -61,40 +65,40 @@ public final class HttpClientCodec extends CombinedChannelDuplexHandler<HttpResp
      * {@code maxChunkSize (8192)}).
      */
     public HttpClientCodec() {
-        this(4096, 8192, false);
+        this(DEFAULT_MAX_INITIAL_LINE_LENGTH, DEFAULT_MAX_HEADER_SIZE, DEFAULT_MAX_CHUNK_SIZE, false);
     }
 
     /**
      * Creates a new instance with the specified decoder options.
      */
-    public HttpClientCodec(int maxInitialLineLength, int maxHeaderSize) {
-        this(maxInitialLineLength, maxHeaderSize, false);
-    }
-
-    /**
-     * Creates a new instance with the specified decoder options.
-     */
-    public HttpClientCodec(
-            int maxInitialLineLength, int maxHeaderSize, boolean failOnMissingResponse) {
-        this(maxInitialLineLength, maxHeaderSize, failOnMissingResponse, true);
+    public HttpClientCodec(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize) {
+        this(maxInitialLineLength, maxHeaderSize, maxChunkSize, false);
     }
 
     /**
      * Creates a new instance with the specified decoder options.
      */
     public HttpClientCodec(
-            int maxInitialLineLength, int maxHeaderSize, boolean failOnMissingResponse,
+            int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean failOnMissingResponse) {
+        this(maxInitialLineLength, maxHeaderSize, maxChunkSize, failOnMissingResponse, true);
+    }
+
+    /**
+     * Creates a new instance with the specified decoder options.
+     */
+    public HttpClientCodec(
+            int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean failOnMissingResponse,
             boolean validateHeaders) {
-        this(maxInitialLineLength, maxHeaderSize, failOnMissingResponse, validateHeaders, false);
+        this(maxInitialLineLength, maxHeaderSize, maxChunkSize, failOnMissingResponse, validateHeaders, false);
     }
 
     /**
      * Creates a new instance with the specified decoder options.
      */
     public HttpClientCodec(
-            int maxInitialLineLength, int maxHeaderSize, boolean failOnMissingResponse,
+            int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean failOnMissingResponse,
             boolean validateHeaders, boolean parseHttpAfterConnectRequest) {
-        init(new Decoder(maxInitialLineLength, maxHeaderSize, validateHeaders), new Encoder());
+        init(new Decoder(maxInitialLineLength, maxHeaderSize, maxChunkSize, validateHeaders), new Encoder());
         this.failOnMissingResponse = failOnMissingResponse;
         this.parseHttpAfterConnectRequest = parseHttpAfterConnectRequest;
     }
@@ -115,7 +119,7 @@ public final class HttpClientCodec extends CombinedChannelDuplexHandler<HttpResp
     public HttpClientCodec(
             int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean failOnMissingResponse,
             boolean validateHeaders, int initialBufferSize, boolean parseHttpAfterConnectRequest) {
-        init(new Decoder(maxInitialLineLength, maxHeaderSize, validateHeaders, initialBufferSize),
+        init(new Decoder(maxInitialLineLength, maxHeaderSize, maxChunkSize, validateHeaders, initialBufferSize),
              new Encoder());
         this.parseHttpAfterConnectRequest = parseHttpAfterConnectRequest;
         this.failOnMissingResponse = failOnMissingResponse;
@@ -177,13 +181,13 @@ public final class HttpClientCodec extends CombinedChannelDuplexHandler<HttpResp
     }
 
     private final class Decoder extends HttpResponseDecoder {
-        Decoder(int maxInitialLineLength, int maxHeaderSize, boolean validateHeaders) {
-            super(maxInitialLineLength, maxHeaderSize, validateHeaders);
+        Decoder(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean validateHeaders) {
+            super(maxInitialLineLength, maxHeaderSize, maxChunkSize, validateHeaders);
         }
 
-        Decoder(int maxInitialLineLength, int maxHeaderSize, boolean validateHeaders,
+        Decoder(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize, boolean validateHeaders,
                 int initialBufferSize) {
-            super(maxInitialLineLength, maxHeaderSize, validateHeaders, initialBufferSize);
+            super(maxInitialLineLength, maxHeaderSize, maxChunkSize, validateHeaders, initialBufferSize);
         }
 
         @Override
