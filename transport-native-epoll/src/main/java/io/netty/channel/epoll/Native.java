@@ -25,6 +25,7 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 import java.io.IOException;
+import java.nio.channels.Selector;
 import java.util.Locale;
 
 import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.epollerr;
@@ -32,6 +33,7 @@ import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.epolle
 import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.epollin;
 import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.epollout;
 import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.epollrdhup;
+import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.isSupportingRecvmmsg;
 import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.isSupportingSendmmsg;
 import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.isSupportingTcpFastopen;
 import static io.netty.channel.epoll.NativeStaticallyReferencedJniMethods.kernelVersion;
@@ -49,6 +51,16 @@ public final class Native {
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(Native.class);
 
     static {
+        Selector selector = null;
+        try {
+            // We call Selector.open() as this will under the hood cause IOUtil to be loaded.
+            // This is a workaround for a possible classloader deadlock that could happen otherwise:
+            //
+            // See https://github.com/netty/netty/issues/10187
+            selector = Selector.open();
+        } catch (IOException ignore) {
+            // Just ignore
+        }
         try {
             // First, try calling a side-effect free JNI method to see if the library was already
             // loaded by the application.
@@ -56,6 +68,14 @@ public final class Native {
         } catch (UnsatisfiedLinkError ignore) {
             // The library was not previously loaded, load it now.
             loadNativeLibrary();
+        } finally {
+            try {
+                if (selector != null) {
+                    selector.close();
+                }
+            } catch (IOException ignore) {
+                // Just ignore
+            }
         }
         Socket.initialize();
     }
@@ -68,6 +88,8 @@ public final class Native {
     public static final int EPOLLERR = epollerr();
 
     public static final boolean IS_SUPPORTING_SENDMMSG = isSupportingSendmmsg();
+    static final boolean IS_SUPPORTING_RECVMMSG = isSupportingRecvmmsg();
+
     public static final boolean IS_SUPPORTING_TCP_FASTOPEN = isSupportingTcpFastopen();
     public static final int TCP_MD5SIG_MAXKEYLEN = tcpMd5SigMaxKeyLen();
     public static final String KERNEL_VERSION = kernelVersion();

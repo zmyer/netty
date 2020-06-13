@@ -20,6 +20,7 @@ import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ResourceLeakHint;
+import io.netty.util.concurrent.AbstractEventExecutor;
 import io.netty.util.concurrent.EventExecutor;
 import io.netty.util.concurrent.OrderedEventExecutor;
 import io.netty.util.internal.ObjectPool;
@@ -50,12 +51,13 @@ import static io.netty.channel.ChannelHandlerMask.MASK_DEREGISTER;
 import static io.netty.channel.ChannelHandlerMask.MASK_DISCONNECT;
 import static io.netty.channel.ChannelHandlerMask.MASK_EXCEPTION_CAUGHT;
 import static io.netty.channel.ChannelHandlerMask.MASK_FLUSH;
+import static io.netty.channel.ChannelHandlerMask.MASK_ONLY_INBOUND;
+import static io.netty.channel.ChannelHandlerMask.MASK_ONLY_OUTBOUND;
 import static io.netty.channel.ChannelHandlerMask.MASK_READ;
 import static io.netty.channel.ChannelHandlerMask.MASK_USER_EVENT_TRIGGERED;
 import static io.netty.channel.ChannelHandlerMask.MASK_WRITE;
 import static io.netty.channel.ChannelHandlerMask.mask;
 
-//FGTODO: 2019/10/31 下午7:06 zmyer
 abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, ResourceLeakHint {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractChannelHandlerContext.class);
@@ -163,7 +165,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).channelRegistered(this);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireChannelRegistered();
@@ -195,7 +197,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).channelUnregistered(this);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireChannelUnregistered();
@@ -227,7 +229,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).channelActive(this);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireChannelActive();
@@ -259,7 +261,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).channelInactive(this);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireChannelInactive();
@@ -301,15 +303,15 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             } catch (Throwable error) {
                 if (logger.isDebugEnabled()) {
                     logger.debug(
-                            "An exception {}" +
-                                    "was thrown by a user handler's exceptionCaught() " +
-                                    "method while handling the following exception:",
-                            ThrowableUtil.stackTraceToString(error), cause);
+                        "An exception {}" +
+                        "was thrown by a user handler's exceptionCaught() " +
+                        "method while handling the following exception:",
+                        ThrowableUtil.stackTraceToString(error), cause);
                 } else if (logger.isWarnEnabled()) {
                     logger.warn(
-                            "An exception '{}' [enable DEBUG level for full stacktrace] " +
-                                    "was thrown by a user handler's exceptionCaught() " +
-                                    "method while handling the following exception:", error, cause);
+                        "An exception '{}' [enable DEBUG level for full stacktrace] " +
+                        "was thrown by a user handler's exceptionCaught() " +
+                        "method while handling the following exception:", error, cause);
                 }
             }
         } else {
@@ -343,7 +345,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).userEventTriggered(this, event);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireUserEventTriggered(event);
@@ -376,7 +378,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).channelRead(this, msg);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireChannelRead(msg);
@@ -407,7 +409,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).channelReadComplete(this);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireChannelReadComplete();
@@ -438,7 +440,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelInboundHandler) handler()).channelWritabilityChanged(this);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             fireChannelWritabilityChanged();
@@ -477,9 +479,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
 
     @Override
     public ChannelFuture bind(final SocketAddress localAddress, final ChannelPromise promise) {
-        if (localAddress == null) {
-            throw new NullPointerException("localAddress");
-        }
+        ObjectUtil.checkNotNull(localAddress, "localAddress");
         if (isNotValidPromise(promise, false)) {
             // cancelled
             return promise;
@@ -495,7 +495,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                 public void run() {
                     next.invokeBind(localAddress, promise);
                 }
-            }, promise, null);
+            }, promise, null, false);
         }
         return promise;
     }
@@ -520,10 +520,8 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     @Override
     public ChannelFuture connect(
             final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise promise) {
+        ObjectUtil.checkNotNull(remoteAddress, "remoteAddress");
 
-        if (remoteAddress == null) {
-            throw new NullPointerException("remoteAddress");
-        }
         if (isNotValidPromise(promise, false)) {
             // cancelled
             return promise;
@@ -539,7 +537,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                 public void run() {
                     next.invokeConnect(remoteAddress, localAddress, promise);
                 }
-            }, promise, null);
+            }, promise, null, false);
         }
         return promise;
     }
@@ -578,7 +576,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                 public void run() {
                     next.invokeDisconnect(promise);
                 }
-            }, promise, null);
+            }, promise, null, false);
         }
         return promise;
     }
@@ -612,7 +610,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                 public void run() {
                     next.invokeClose(promise);
                 }
-            }, promise, null);
+            }, promise, null, false);
         }
 
         return promise;
@@ -647,7 +645,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                 public void run() {
                     next.invokeDeregister(promise);
                 }
-            }, promise, null);
+            }, promise, null, false);
         }
 
         return promise;
@@ -687,7 +685,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             try {
                 ((ChannelOutboundHandler) handler()).read(this);
             } catch (Throwable t) {
-                notifyHandlerException(t);
+                invokeExceptionCaught(t);
             }
         } else {
             read();
@@ -706,7 +704,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         return promise;
     }
 
-    private void invokeWrite(Object msg, ChannelPromise promise) {
+    void invokeWrite(Object msg, ChannelPromise promise) {
         if (invokeHandler()) {
             invokeWrite0(msg, promise);
         } else {
@@ -733,7 +731,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             if (tasks == null) {
                 next.invokeTasks = tasks = new Tasks(next);
             }
-            safeExecute(executor, tasks.invokeFlushTask, channel().voidPromise(), null);
+            safeExecute(executor, tasks.invokeFlushTask, channel().voidPromise(), null, false);
         }
 
         return this;
@@ -751,7 +749,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         try {
             ((ChannelOutboundHandler) handler()).flush(this);
         } catch (Throwable t) {
-            notifyHandlerException(t);
+            invokeExceptionCaught(t);
         }
     }
 
@@ -761,7 +759,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         return promise;
     }
 
-    private void invokeWriteAndFlush(Object msg, ChannelPromise promise) {
+    void invokeWriteAndFlush(Object msg, ChannelPromise promise) {
         if (invokeHandler()) {
             invokeWrite0(msg, promise);
             invokeFlush0();
@@ -794,14 +792,9 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                 next.invokeWrite(m, promise);
             }
         } else {
-            final AbstractWriteTask task;
-            if (flush) {
-                task = WriteAndFlushTask.newInstance(next, m, promise);
-            } else {
-                task = WriteTask.newInstance(next, m, promise);
-            }
-            if (!safeExecute(executor, task, promise, m)) {
-                // We failed to submit the AbstractWriteTask. We need to cancel it so we decrement the pending bytes
+            final WriteTask task = WriteTask.newInstance(next, m, promise, flush);
+            if (!safeExecute(executor, task, promise, m, !flush)) {
+                // We failed to submit the WriteTask. We need to cancel it so we decrement the pending bytes
                 // and put it back in the Recycler for re-use later.
                 //
                 // See https://github.com/netty/netty/issues/8343.
@@ -819,39 +812,6 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         // Only log if the given promise is not of type VoidChannelPromise as tryFailure(...) is expected to return
         // false.
         PromiseNotificationUtil.tryFailure(promise, cause, promise instanceof VoidChannelPromise ? null : logger);
-    }
-
-    private void notifyHandlerException(Throwable cause) {
-        if (inExceptionCaught(cause)) {
-            if (logger.isWarnEnabled()) {
-                logger.warn(
-                        "An exception was thrown by a user handler " +
-                                "while handling an exceptionCaught event", cause);
-            }
-            return;
-        }
-
-        invokeExceptionCaught(cause);
-    }
-
-    private static boolean inExceptionCaught(Throwable cause) {
-        do {
-            StackTraceElement[] trace = cause.getStackTrace();
-            if (trace != null) {
-                for (StackTraceElement t : trace) {
-                    if (t == null) {
-                        break;
-                    }
-                    if ("exceptionCaught".equals(t.getMethodName())) {
-                        return true;
-                    }
-                }
-            }
-
-            cause = cause.getCause();
-        } while (cause != null);
-
-        return false;
     }
 
     @Override
@@ -879,9 +839,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     }
 
     private boolean isNotValidPromise(ChannelPromise promise, boolean allowVoidPromise) {
-        if (promise == null) {
-            throw new NullPointerException("promise");
-        }
+        ObjectUtil.checkNotNull(promise, "promise");
 
         if (promise.isDone()) {
             // Check if the promise was cancelled and if so signal that the processing of the operation
@@ -917,18 +875,31 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
 
     private AbstractChannelHandlerContext findContextInbound(int mask) {
         AbstractChannelHandlerContext ctx = this;
+        EventExecutor currentExecutor = executor();
         do {
             ctx = ctx.next;
-        } while ((ctx.executionMask & mask) == 0);
+        } while (skipContext(ctx, currentExecutor, mask, MASK_ONLY_INBOUND));
         return ctx;
     }
 
     private AbstractChannelHandlerContext findContextOutbound(int mask) {
         AbstractChannelHandlerContext ctx = this;
+        EventExecutor currentExecutor = executor();
         do {
             ctx = ctx.prev;
-        } while ((ctx.executionMask & mask) == 0);
+        } while (skipContext(ctx, currentExecutor, mask, MASK_ONLY_OUTBOUND));
         return ctx;
+    }
+
+    private static boolean skipContext(
+            AbstractChannelHandlerContext ctx, EventExecutor currentExecutor, int mask, int onlyMask) {
+        // Ensure we correctly handle MASK_EXCEPTION_CAUGHT which is not included in the MASK_EXCEPTION_CAUGHT
+        return (ctx.executionMask & (onlyMask | mask)) == 0 ||
+                // We can only skip if the EventExecutor is the same as otherwise we need to ensure we offload
+                // everything to preserve ordering.
+                //
+                // See https://github.com/netty/netty/issues/10067
+                (ctx.executor() == currentExecutor && (ctx.executionMask & mask) == 0);
     }
 
     @Override
@@ -941,7 +912,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     }
 
     final boolean setAddComplete() {
-        for (; ; ) {
+        for (;;) {
             int oldState = handlerState;
             if (oldState == REMOVE_COMPLETE) {
                 return false;
@@ -983,7 +954,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     /**
      * Makes best possible effort to detect if {@link ChannelHandler#handlerAdded(ChannelHandlerContext)} was called
      * yet. If not return {@code false} and if called or could not detect return {@code true}.
-     * <p>
+     *
      * If this method returns {@code false} we will not invoke the {@link ChannelHandler} but just forward the event.
      * This is needed as {@link DefaultChannelPipeline} may already put the {@link ChannelHandler} in the linked-list
      * but not called {@link ChannelHandler#handlerAdded(ChannelHandlerContext)}.
@@ -1009,9 +980,14 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         return channel().hasAttr(key);
     }
 
-    private static boolean safeExecute(EventExecutor executor, Runnable runnable, ChannelPromise promise, Object msg) {
+    private static boolean safeExecute(EventExecutor executor, Runnable runnable,
+            ChannelPromise promise, Object msg, boolean lazy) {
         try {
-            executor.execute(runnable);
+            if (lazy && executor instanceof AbstractEventExecutor) {
+                ((AbstractEventExecutor) executor).lazyExecute(runnable);
+            } else {
+                executor.execute(runnable);
+            }
             return true;
         } catch (Throwable cause) {
             try {
@@ -1035,28 +1011,41 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         return StringUtil.simpleClassName(ChannelHandlerContext.class) + '(' + name + ", " + channel() + ')';
     }
 
-    abstract static class AbstractWriteTask implements Runnable {
+    static final class WriteTask implements Runnable {
+        private static final ObjectPool<WriteTask> RECYCLER = ObjectPool.newPool(new ObjectCreator<WriteTask>() {
+            @Override
+            public WriteTask newObject(Handle<WriteTask> handle) {
+                return new WriteTask(handle);
+            }
+        });
+
+        static WriteTask newInstance(AbstractChannelHandlerContext ctx,
+                Object msg, ChannelPromise promise, boolean flush) {
+            WriteTask task = RECYCLER.get();
+            init(task, ctx, msg, promise, flush);
+            return task;
+        }
 
         private static final boolean ESTIMATE_TASK_SIZE_ON_SUBMIT =
                 SystemPropertyUtil.getBoolean("io.netty.transport.estimateSizeOnSubmit", true);
 
-        // Assuming a 64-bit JVM, 16 bytes object header, 3 reference fields and one int field, plus alignment
+        // Assuming compressed oops, 12 bytes obj header, 4 ref fields and one int field
         private static final int WRITE_TASK_OVERHEAD =
-                SystemPropertyUtil.getInt("io.netty.transport.writeTaskSizeOverhead", 48);
+                SystemPropertyUtil.getInt("io.netty.transport.writeTaskSizeOverhead", 32);
 
-        private final Handle<AbstractWriteTask> handle;
+        private final Handle<WriteTask> handle;
         private AbstractChannelHandlerContext ctx;
         private Object msg;
         private ChannelPromise promise;
-        private int size;
+        private int size; // sign bit controls flush
 
         @SuppressWarnings("unchecked")
-        private AbstractWriteTask(Handle<? extends AbstractWriteTask> handle) {
-            this.handle = (Handle<AbstractWriteTask>) handle;
+        private WriteTask(Handle<? extends WriteTask> handle) {
+            this.handle = (Handle<WriteTask>) handle;
         }
 
-        protected static void init(AbstractWriteTask task, AbstractChannelHandlerContext ctx,
-                                   Object msg, ChannelPromise promise) {
+        protected static void init(WriteTask task, AbstractChannelHandlerContext ctx,
+                                   Object msg, ChannelPromise promise, boolean flush) {
             task.ctx = ctx;
             task.msg = msg;
             task.promise = promise;
@@ -1067,13 +1056,20 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             } else {
                 task.size = 0;
             }
+            if (flush) {
+                task.size |= Integer.MIN_VALUE;
+            }
         }
 
         @Override
-        public final void run() {
+        public void run() {
             try {
                 decrementPendingOutboundBytes();
-                write(ctx, msg, promise);
+                if (size >= 0) {
+                    ctx.invokeWrite(msg, promise);
+                } else {
+                    ctx.invokeWriteAndFlush(msg, promise);
+                }
             } finally {
                 recycle();
             }
@@ -1089,7 +1085,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
 
         private void decrementPendingOutboundBytes() {
             if (ESTIMATE_TASK_SIZE_ON_SUBMIT) {
-                ctx.pipeline.decrementPendingOutboundBytes(size);
+                ctx.pipeline.decrementPendingOutboundBytes(size & Integer.MAX_VALUE);
             }
         }
 
@@ -1099,59 +1095,6 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             msg = null;
             promise = null;
             handle.recycle(this);
-        }
-
-        protected void write(AbstractChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            ctx.invokeWrite(msg, promise);
-        }
-    }
-
-    static final class WriteTask extends AbstractWriteTask implements SingleThreadEventLoop.NonWakeupRunnable {
-
-        private static final ObjectPool<WriteTask> RECYCLER = ObjectPool.newPool(new ObjectCreator<WriteTask>() {
-            @Override
-            public WriteTask newObject(Handle<WriteTask> handle) {
-                return new WriteTask(handle);
-            }
-        });
-
-        static WriteTask newInstance(
-                AbstractChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            WriteTask task = RECYCLER.get();
-            init(task, ctx, msg, promise);
-            return task;
-        }
-
-        private WriteTask(Handle<WriteTask> handle) {
-            super(handle);
-        }
-    }
-
-    static final class WriteAndFlushTask extends AbstractWriteTask {
-
-        private static final ObjectPool<WriteAndFlushTask> RECYCLER = ObjectPool.newPool(
-                new ObjectCreator<WriteAndFlushTask>() {
-                    @Override
-                    public WriteAndFlushTask newObject(Handle<WriteAndFlushTask> handle) {
-                        return new WriteAndFlushTask(handle);
-                    }
-                });
-
-        static WriteAndFlushTask newInstance(
-                AbstractChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            WriteAndFlushTask task = RECYCLER.get();
-            init(task, ctx, msg, promise);
-            return task;
-        }
-
-        private WriteAndFlushTask(Handle<WriteAndFlushTask> handle) {
-            super(handle);
-        }
-
-        @Override
-        public void write(AbstractChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
-            super.write(ctx, msg, promise);
-            ctx.invokeFlush();
         }
     }
 

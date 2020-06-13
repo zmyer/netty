@@ -16,6 +16,7 @@
 
 package io.netty.util.concurrent;
 
+import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.StringUtil;
 
 import java.util.Locale;
@@ -65,9 +66,7 @@ public class DefaultThreadFactory implements ThreadFactory {
     }
 
     public static String toPoolName(Class<?> poolType) {
-        if (poolType == null) {
-            throw new NullPointerException("poolType");
-        }
+        ObjectUtil.checkNotNull(poolType, "poolType");
 
         String poolName = StringUtil.simpleClassName(poolType);
         switch (poolName.length()) {
@@ -85,9 +84,8 @@ public class DefaultThreadFactory implements ThreadFactory {
     }
 
     public DefaultThreadFactory(String poolName, boolean daemon, int priority, ThreadGroup threadGroup) {
-        if (poolName == null) {
-            throw new NullPointerException("poolName");
-        }
+        ObjectUtil.checkNotNull(poolName, "poolName");
+
         if (priority < Thread.MIN_PRIORITY || priority > Thread.MAX_PRIORITY) {
             throw new IllegalArgumentException(
                     "priority: " + priority + " (expected: Thread.MIN_PRIORITY <= priority <= Thread.MAX_PRIORITY)");

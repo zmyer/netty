@@ -28,8 +28,8 @@ import java.util.concurrent.ThreadFactory;
 
 /**
  * Abstract base class for {@link EventLoop}s that execute all its submitted tasks in a single thread.
+ *
  */
-//FGTODO: 2019/10/31 下午7:31 zmyer
 public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor implements EventLoop {
 
     protected static final int DEFAULT_MAX_PENDING_TASKS = Math.max(16,
@@ -91,13 +91,8 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
     @Deprecated
     @Override
     public ChannelFuture register(final Channel channel, final ChannelPromise promise) {
-        if (channel == null) {
-            throw new NullPointerException("channel");
-        }
-        if (promise == null) {
-            throw new NullPointerException("promise");
-        }
-
+        ObjectUtil.checkNotNull(promise, "promise");
+        ObjectUtil.checkNotNull(channel, "channel");
         channel.unsafe().register(this, promise);
         return promise;
     }
@@ -118,7 +113,7 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
             reject(task);
         }
 
-        if (wakesUpForTask(task)) {
+        if (!(task instanceof LazyRunnable) && wakesUpForTask(task)) {
             wakeup(inEventLoop());
         }
     }
@@ -127,6 +122,7 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
      * Removes a task that was added previously via {@link #executeAfterEventLoopIteration(Runnable)}.
      *
      * @param task to be removed.
+     *
      * @return {@code true} if the task was removed as a result of this call.
      */
     @UnstableApi
@@ -157,11 +153,5 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
     @UnstableApi
     public int registeredChannels() {
         return -1;
-    }
-
-    /**
-     * Marker interface for {@link Runnable} that will not trigger an {@link #wakeup(boolean)} in all cases.
-     */
-    interface NonWakeupRunnable extends SingleThreadEventExecutor.NonWakeupRunnable {
     }
 }

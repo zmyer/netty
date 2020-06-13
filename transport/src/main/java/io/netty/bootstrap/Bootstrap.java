@@ -35,8 +35,6 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * A {@link Bootstrap} that makes it easy to bootstrap a {@link Channel} to use
@@ -191,7 +189,13 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
                                                final SocketAddress localAddress, final ChannelPromise promise) {
         try {
             final EventLoop eventLoop = channel.eventLoop();
-            final AddressResolver<SocketAddress> resolver = this.resolver.getResolver(eventLoop);
+            AddressResolver<SocketAddress> resolver;
+            try {
+                resolver = this.resolver.getResolver(eventLoop);
+            } catch (Throwable cause) {
+                channel.close();
+                return promise.setFailure(cause);
+            }
 
             if (!resolver.isSupported(remoteAddress) || resolver.isResolved(remoteAddress)) {
                 // Resolver has no idea about what to do with the specified remote address or it's resolved already.
@@ -258,8 +262,8 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
         ChannelPipeline p = channel.pipeline();
         p.addLast(config.handler());
 
-        setChannelOptions(channel, options0().entrySet().toArray(newOptionArray(0)), logger);
-        setAttributes(channel, attrs0().entrySet().toArray(newAttrArray(0)));
+        setChannelOptions(channel, newOptionsArray(), logger);
+        setAttributes(channel, attrs0().entrySet().toArray(EMPTY_ATTRIBUTE_ARRAY));
     }
 
     @Override

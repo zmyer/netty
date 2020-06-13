@@ -25,6 +25,7 @@ import io.netty.util.internal.InternalThreadLocalMap;
 import io.netty.util.internal.ObjectPool;
 import io.netty.util.internal.ObjectPool.Handle;
 import io.netty.util.internal.ObjectPool.ObjectCreator;
+import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.PromiseNotificationUtil;
 import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;
@@ -54,7 +55,7 @@ import static java.lang.Math.min;
 public final class ChannelOutboundBuffer {
     // Assuming a 64-bit JVM:
     //  - 16 bytes object header
-    //  - 8 reference fields
+    //  - 6 reference fields
     //  - 2 long fields
     //  - 2 int fields
     //  - 1 boolean field
@@ -454,7 +455,7 @@ public final class ChannelOutboundBuffer {
                         // branch is not very likely to get hit very frequently.
                         nioBufferCount = nioBuffers(entry, buf, nioBuffers, nioBufferCount, maxCount);
                     }
-                    if (nioBufferCount == maxCount) {
+                    if (nioBufferCount >= maxCount) {
                         break;
                     }
                 }
@@ -770,9 +771,7 @@ public final class ChannelOutboundBuffer {
      * returns {@code false} or there are no more flushed messages to process.
      */
     public void forEachFlushedMessage(MessageProcessor processor) throws Exception {
-        if (processor == null) {
-            throw new NullPointerException("processor");
-        }
+        ObjectUtil.checkNotNull(processor, "processor");
 
         Entry entry = flushedEntry;
         if (entry == null) {

@@ -98,13 +98,6 @@ public final class Http2TestUtil {
         return data;
     }
 
-    public static Http2Headers newHttp2HeadersWithRequestPseudoHeaders() {
-        return new DefaultHttp2Headers(true)
-            .method("GET")
-            .path("/")
-            .scheme("https");
-    }
-
     /**
      * Returns an {@link AsciiString} that wraps a randomly-filled byte array.
      */
@@ -692,6 +685,10 @@ public final class Http2TestUtil {
 
     static ByteBuf bb(String s) {
         return ByteBufUtil.writeUtf8(UnpooledByteBufAllocator.DEFAULT, s);
+    }
+
+    static ByteBuf bb(int size) {
+        return UnpooledByteBufAllocator.DEFAULT.buffer().writeZero(size);
     }
 
     static void assertEqualsAndRelease(Http2Frame expected, Http2Frame actual) {

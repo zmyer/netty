@@ -22,6 +22,7 @@ import io.netty.util.internal.ObjectUtil;
 
 import java.net.URI;
 
+import static io.netty.handler.codec.http.websocketx.WebSocketServerProtocolConfig.DEFAULT_HANDSHAKE_TIMEOUT_MILLIS;
 import static io.netty.util.internal.ObjectUtil.checkPositive;
 
 /**
@@ -29,9 +30,10 @@ import static io.netty.util.internal.ObjectUtil.checkPositive;
  */
 public final class WebSocketClientProtocolConfig {
 
-    static final WebSocketClientProtocolConfig DEFAULT = new WebSocketClientProtocolConfig(
-        URI.create("https://localhost/"), null, WebSocketVersion.V13, false,
-        EmptyHttpHeaders.INSTANCE, 65536, true, false, true, true, 10000L, -1, false);
+    static final boolean DEFAULT_PERFORM_MASKING = true;
+    static final boolean DEFAULT_ALLOW_MASK_MISMATCH = false;
+    static final boolean DEFAULT_HANDLE_CLOSE_FRAMES = true;
+    static final boolean DEFAULT_DROP_PONG_FRAMES = true;
 
     private final URI webSocketUri;
     private final String subprotocol;
@@ -42,6 +44,7 @@ public final class WebSocketClientProtocolConfig {
     private final boolean performMasking;
     private final boolean allowMaskMismatch;
     private final boolean handleCloseFrames;
+    private final WebSocketCloseStatus sendCloseFrame;
     private final boolean dropPongFrames;
     private final long handshakeTimeoutMillis;
     private final long forceCloseTimeoutMillis;
@@ -57,6 +60,7 @@ public final class WebSocketClientProtocolConfig {
         boolean performMasking,
         boolean allowMaskMismatch,
         boolean handleCloseFrames,
+        WebSocketCloseStatus sendCloseFrame,
         boolean dropPongFrames,
         long handshakeTimeoutMillis,
         long forceCloseTimeoutMillis,
@@ -72,6 +76,7 @@ public final class WebSocketClientProtocolConfig {
         this.allowMaskMismatch = allowMaskMismatch;
         this.forceCloseTimeoutMillis = forceCloseTimeoutMillis;
         this.handleCloseFrames = handleCloseFrames;
+        this.sendCloseFrame = sendCloseFrame;
         this.dropPongFrames = dropPongFrames;
         this.handshakeTimeoutMillis = checkPositive(handshakeTimeoutMillis, "handshakeTimeoutMillis");
         this.absoluteUpgradeUrl = absoluteUpgradeUrl;
@@ -113,6 +118,10 @@ public final class WebSocketClientProtocolConfig {
         return handleCloseFrames;
     }
 
+    public WebSocketCloseStatus sendCloseFrame() {
+        return sendCloseFrame;
+    }
+
     public boolean dropPongFrames() {
         return dropPongFrames;
     }
@@ -141,6 +150,7 @@ public final class WebSocketClientProtocolConfig {
             ", performMasking=" + performMasking +
             ", allowMaskMismatch=" + allowMaskMismatch +
             ", handleCloseFrames=" + handleCloseFrames +
+            ", sendCloseFrame=" + sendCloseFrame +
             ", dropPongFrames=" + dropPongFrames +
             ", handshakeTimeoutMillis=" + handshakeTimeoutMillis +
             ", forceCloseTimeoutMillis=" + forceCloseTimeoutMillis +
@@ -153,7 +163,21 @@ public final class WebSocketClientProtocolConfig {
     }
 
     public static Builder newBuilder() {
-        return new Builder(DEFAULT);
+        return new Builder(
+                URI.create("https://localhost/"),
+                null,
+                WebSocketVersion.V13,
+                false,
+                EmptyHttpHeaders.INSTANCE,
+                65536,
+                DEFAULT_PERFORM_MASKING,
+                DEFAULT_ALLOW_MASK_MISMATCH,
+                DEFAULT_HANDLE_CLOSE_FRAMES,
+                WebSocketCloseStatus.NORMAL_CLOSURE,
+                DEFAULT_DROP_PONG_FRAMES,
+                DEFAULT_HANDSHAKE_TIMEOUT_MILLIS,
+                -1,
+                false);
     }
 
     public static final class Builder {
@@ -166,27 +190,57 @@ public final class WebSocketClientProtocolConfig {
         private boolean performMasking;
         private boolean allowMaskMismatch;
         private boolean handleCloseFrames;
+        private WebSocketCloseStatus sendCloseFrame;
         private boolean dropPongFrames;
         private long handshakeTimeoutMillis;
         private long forceCloseTimeoutMillis;
         private boolean absoluteUpgradeUrl;
 
         private Builder(WebSocketClientProtocolConfig clientConfig) {
-            ObjectUtil.checkNotNull(clientConfig, "clientConfig");
+            this(ObjectUtil.checkNotNull(clientConfig, "clientConfig").webSocketUri(),
+                 clientConfig.subprotocol(),
+                 clientConfig.version(),
+                 clientConfig.allowExtensions(),
+                 clientConfig.customHeaders(),
+                 clientConfig.maxFramePayloadLength(),
+                 clientConfig.performMasking(),
+                 clientConfig.allowMaskMismatch(),
+                 clientConfig.handleCloseFrames(),
+                 clientConfig.sendCloseFrame(),
+                 clientConfig.dropPongFrames(),
+                 clientConfig.handshakeTimeoutMillis(),
+                 clientConfig.forceCloseTimeoutMillis(),
+                 clientConfig.absoluteUpgradeUrl());
+        }
 
-            this.webSocketUri = clientConfig.webSocketUri();
-            this.subprotocol = clientConfig.subprotocol();
-            this.version = clientConfig.version();
-            this.allowExtensions = clientConfig.allowExtensions();
-            this.customHeaders = clientConfig.customHeaders();
-            this.maxFramePayloadLength = clientConfig.maxFramePayloadLength();
-            this.performMasking = clientConfig.performMasking();
-            this.allowMaskMismatch = clientConfig.allowMaskMismatch();
-            this.handleCloseFrames = clientConfig.handleCloseFrames();
-            this.dropPongFrames = clientConfig.dropPongFrames();
-            this.handshakeTimeoutMillis = clientConfig.handshakeTimeoutMillis();
-            this.forceCloseTimeoutMillis = clientConfig.forceCloseTimeoutMillis();
-            this.absoluteUpgradeUrl = clientConfig.absoluteUpgradeUrl();
+        private Builder(URI webSocketUri,
+                        String subprotocol,
+                        WebSocketVersion version,
+                        boolean allowExtensions,
+                        HttpHeaders customHeaders,
+                        int maxFramePayloadLength,
+                        boolean performMasking,
+                        boolean allowMaskMismatch,
+                        boolean handleCloseFrames,
+                        WebSocketCloseStatus sendCloseFrame,
+                        boolean dropPongFrames,
+                        long handshakeTimeoutMillis,
+                        long forceCloseTimeoutMillis,
+                        boolean absoluteUpgradeUrl) {
+            this.webSocketUri = webSocketUri;
+            this.subprotocol = subprotocol;
+            this.version = version;
+            this.allowExtensions = allowExtensions;
+            this.customHeaders = customHeaders;
+            this.maxFramePayloadLength = maxFramePayloadLength;
+            this.performMasking = performMasking;
+            this.allowMaskMismatch = allowMaskMismatch;
+            this.handleCloseFrames = handleCloseFrames;
+            this.sendCloseFrame = sendCloseFrame;
+            this.dropPongFrames = dropPongFrames;
+            this.handshakeTimeoutMillis = handshakeTimeoutMillis;
+            this.forceCloseTimeoutMillis = forceCloseTimeoutMillis;
+            this.absoluteUpgradeUrl = absoluteUpgradeUrl;
         }
 
         /**
@@ -273,6 +327,14 @@ public final class WebSocketClientProtocolConfig {
         }
 
         /**
+         * Close frame to send, when close frame was not send manually. Or {@code null} to disable proper close.
+         */
+        public Builder sendCloseFrame(WebSocketCloseStatus sendCloseFrame) {
+            this.sendCloseFrame = sendCloseFrame;
+            return this;
+        }
+
+        /**
          * {@code true} if pong frames should not be forwarded
          */
         public Builder dropPongFrames(boolean dropPongFrames) {
@@ -319,6 +381,7 @@ public final class WebSocketClientProtocolConfig {
                 performMasking,
                 allowMaskMismatch,
                 handleCloseFrames,
+                sendCloseFrame,
                 dropPongFrames,
                 handshakeTimeoutMillis,
                 forceCloseTimeoutMillis,

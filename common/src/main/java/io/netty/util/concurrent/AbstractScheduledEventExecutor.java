@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Abstract base class for {@link EventExecutor}s that want to support scheduling.
  */
-//FGTODO: 2019/10/31 下午7:32 zmyer
 public abstract class AbstractScheduledEventExecutor extends AbstractEventExecutor {
     private static final Comparator<ScheduledFutureTask<?>> SCHEDULED_FUTURE_TASK_COMPARATOR =
             new Comparator<ScheduledFutureTask<?>>() {
@@ -38,6 +37,11 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
                     return o1.compareTo(o2);
                 }
             };
+
+   static final Runnable WAKEUP_TASK = new Runnable() {
+       @Override
+       public void run() { } // Do nothing
+    };
 
     PriorityQueue<ScheduledFutureTask<?>> scheduledTaskQueue;
 
@@ -57,7 +61,6 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
     /**
      * Given an arbitrary deadline {@code deadlineNanos}, calculate the number of nano seconds from now
      * {@code deadlineNanos} would expire.
-     *
      * @param deadlineNanos An arbitrary deadline in nano seconds.
      * @return the number of nano seconds from now {@code deadlineNanos} would expire.
      */
@@ -67,7 +70,6 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
 
     /**
      * The initial value used for delay and computations based upon a monatomic time source.
-     *
      * @return initial value used for delay and computations based upon a monatomic time source.
      */
     protected static long initialNanoTime() {
@@ -90,7 +92,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
 
     /**
      * Cancel all scheduled tasks.
-     * <p>
+     *
      * This method MUST be called only when {@link #inEventLoop()} is {@code true}.
      */
     protected void cancelScheduledTasks() {
@@ -100,9 +102,10 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
             return;
         }
 
-        final ScheduledFutureTask<?>[] scheduledTasks = scheduledTaskQueue.toArray(new ScheduledFutureTask<?>[0]);
+        final ScheduledFutureTask<?>[] scheduledTasks =
+                scheduledTaskQueue.toArray(new ScheduledFutureTask<?>[0]);
 
-        for (ScheduledFutureTask<?> task : scheduledTasks) {
+        for (ScheduledFutureTask<?> task: scheduledTasks) {
             task.cancelWithoutRemove(false);
         }
 
@@ -123,21 +126,21 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
     protected final Runnable pollScheduledTask(long nanoTime) {
         assert inEventLoop();
 
-        Queue<ScheduledFutureTask<?>> scheduledTaskQueue = this.scheduledTaskQueue;
-        ScheduledFutureTask<?> scheduledTask = scheduledTaskQueue == null ? null : scheduledTaskQueue.peek();
+        ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
         if (scheduledTask == null || scheduledTask.deadlineNanos() - nanoTime > 0) {
             return null;
         }
         scheduledTaskQueue.remove();
+        scheduledTask.setConsumed();
         return scheduledTask;
     }
 
     /**
-     * Return the nanoseconds when the next scheduled task is ready to be run or {@code -1} if no task is scheduled.
+     * Return the nanoseconds until the next scheduled task is ready to be run or {@code -1} if no task is scheduled.
      */
     protected final long nextScheduledTaskNano() {
         ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
-        return scheduledTask != null ? Math.max(0, scheduledTask.deadlineNanos() - nanoTime()) : -1;
+        return scheduledTask != null ? scheduledTask.delayNanos() : -1;
     }
 
     /**
@@ -172,7 +175,9 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         validateScheduled0(delay, unit);
 
         return schedule(new ScheduledFutureTask<Void>(
-                this, command, deadlineNanos(unit.toNanos(delay))));
+                this,
+                command,
+                deadlineNanos(unit.toNanos(delay))));
     }
 
     @Override
@@ -241,47 +246,65 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         // NOOP
     }
 
+    final void scheduleFromEventLoop(final ScheduledFutureTask<?> task) {
+        // nextTaskId a long and so there is no chance it will overflow back to 0
+        scheduledTaskQueue().add(task.setId(++nextTaskId));
+    }
+
     private <V> ScheduledFuture<V> schedule(final ScheduledFutureTask<V> task) {
         if (inEventLoop()) {
-            scheduledTaskQueue().add(task.setId(nextTaskId++));
+            scheduleFromEventLoop(task);
         } else {
-            executeScheduledRunnable(new Runnable() {
-                @Override
-                public void run() {
-                    scheduledTaskQueue().add(task.setId(nextTaskId++));
+            final long deadlineNanos = task.deadlineNanos();
+            // task will add itself to scheduled task queue when run if not expired
+            if (beforeScheduledTaskSubmitted(deadlineNanos)) {
+                execute(task);
+            } else {
+                lazyExecute(task);
+                // Second hook after scheduling to facilitate race-avoidance
+                if (afterScheduledTaskSubmitted(deadlineNanos)) {
+                    execute(WAKEUP_TASK);
                 }
-            }, true, task.deadlineNanos());
+            }
         }
 
         return task;
     }
 
     final void removeScheduled(final ScheduledFutureTask<?> task) {
+        assert task.isCancelled();
         if (inEventLoop()) {
             scheduledTaskQueue().removeTyped(task);
         } else {
-            executeScheduledRunnable(new Runnable() {
-                @Override
-                public void run() {
-                    scheduledTaskQueue().removeTyped(task);
-                }
-            }, false, task.deadlineNanos());
+            // task will remove itself from scheduled task queue when it runs
+            lazyExecute(task);
         }
     }
 
     /**
-     * Execute a {@link Runnable} from outside the event loop thread that is responsible for adding or removing
-     * a scheduled action. Note that schedule events which occur on the event loop thread do not interact with this
-     * method.
+     * Called from arbitrary non-{@link EventExecutor} threads prior to scheduled task submission.
+     * Returns {@code true} if the {@link EventExecutor} thread should be woken immediately to
+     * process the scheduled task (if not already awake).
+     * <p>
+     * If {@code false} is returned, {@link #afterScheduledTaskSubmitted(long)} will be called with
+     * the same value <i>after</i> the scheduled task is enqueued, providing another opportunity
+     * to wake the {@link EventExecutor} thread if required.
      *
-     * @param runnable      The {@link Runnable} to execute which will add or remove a scheduled action
-     * @param isAddition    {@code true} if the {@link Runnable} will add an action, {@code false} if it will remove an
-     *                      action
-     * @param deadlineNanos the deadline in nanos of the scheduled task that will be added or removed.
+     * @param deadlineNanos deadline of the to-be-scheduled task
+     *     relative to {@link AbstractScheduledEventExecutor#nanoTime()}
+     * @return {@code true} if the {@link EventExecutor} thread should be woken, {@code false} otherwise
      */
-    void executeScheduledRunnable(Runnable runnable,
-                                  @SuppressWarnings("unused") boolean isAddition,
-                                  @SuppressWarnings("unused") long deadlineNanos) {
-        execute(runnable);
+    protected boolean beforeScheduledTaskSubmitted(long deadlineNanos) {
+        return true;
+    }
+
+    /**
+     * See {@link #beforeScheduledTaskSubmitted(long)}. Called only after that method returns false.
+     *
+     * @param deadlineNanos relative to {@link AbstractScheduledEventExecutor#nanoTime()}
+     * @return  {@code true} if the {@link EventExecutor} thread should be woken, {@code false} otherwise
+     */
+    protected boolean afterScheduledTaskSubmitted(long deadlineNanos) {
+        return true;
     }
 }

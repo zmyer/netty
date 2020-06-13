@@ -154,6 +154,8 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
         ByteBuffer tmpNioBuf = this.tmpNioBuf;
         if (tmpNioBuf == null) {
             this.tmpNioBuf = tmpNioBuf = newInternalNioBuffer(memory);
+        } else {
+            tmpNioBuf.clear();
         }
         return tmpNioBuf;
     }
@@ -212,6 +214,11 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
     @Override
     public final ByteBuffer[] nioBuffers(int index, int length) {
         return new ByteBuffer[] { nioBuffer(index, length) };
+    }
+
+    @Override
+    public final boolean isContiguous() {
+        return true;
     }
 
     @Override

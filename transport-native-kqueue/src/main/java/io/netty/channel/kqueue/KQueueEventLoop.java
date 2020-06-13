@@ -77,7 +77,7 @@ final class KQueueEventLoop extends SingleThreadEventLoop {
                     EventLoopTaskQueueFactory queueFactory) {
         super(parent, executor, false, newTaskQueue(queueFactory), newTaskQueue(queueFactory),
                 rejectedExecutionHandler);
-        selectStrategy = ObjectUtil.checkNotNull(strategy, "strategy");
+        this.selectStrategy = ObjectUtil.checkNotNull(strategy, "strategy");
         this.kqueueFd = Native.newKQueue();
         if (maxEvents == 0) {
             allowGrowing = true;
@@ -85,8 +85,8 @@ final class KQueueEventLoop extends SingleThreadEventLoop {
         } else {
             allowGrowing = false;
         }
-        changeList = new KQueueEventArray(maxEvents);
-        eventList = new KQueueEventArray(maxEvents);
+        this.changeList = new KQueueEventArray(maxEvents);
+        this.eventList = new KQueueEventArray(maxEvents);
         int result = Native.keventAddUserEvent(kqueueFd.intValue(), KQUEUE_WAKE_UP_IDENT);
         if (result < 0) {
             cleanup();

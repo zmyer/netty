@@ -529,8 +529,7 @@ public abstract class ReferenceCountedOpenSslContext extends SslContext implemen
         }
     }
 
-    // Exposed for testing only
-    final void setUseTasks(boolean useTasks) {
+    public final void setUseTasks(boolean useTasks) {
         Lock writerLock = ctxLock.writeLock();
         writerLock.lock();
         try {
@@ -911,13 +910,12 @@ public abstract class ReferenceCountedOpenSslContext extends SslContext implemen
             return ((OpenSslX509KeyManagerFactory) factory).newProvider();
         }
 
-        X509KeyManager keyManager = chooseX509KeyManager(factory.getKeyManagers());
         if (factory instanceof OpenSslCachingX509KeyManagerFactory) {
             // The user explicit used OpenSslCachingX509KeyManagerFactory which signals us that its fine to cache.
-            return new OpenSslCachingKeyMaterialProvider(keyManager, password);
+            return ((OpenSslCachingX509KeyManagerFactory) factory).newProvider(password);
         }
         // We can not be sure if the material may change at runtime so we will not cache it.
-        return new OpenSslKeyMaterialProvider(keyManager, password);
+        return new OpenSslKeyMaterialProvider(chooseX509KeyManager(factory.getKeyManagers()), password);
     }
 
     private static final class PrivateKeyMethod implements SSLPrivateKeyMethod {
